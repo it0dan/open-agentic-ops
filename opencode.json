@@ -1,0 +1,65 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "mcp": {
+    "sensedia-ai-gateway": {
+      "enabled": false
+    },
+    "github": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "enabled": true
+    },
+    "postgres": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "${DATABASE_URL}"
+      ],
+      "enabled": false
+    },
+    "redis": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-redis",
+        "${REDIS_URL}"
+      ],
+      "enabled": false
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git pull*": "allow",
+      "git fetch*": "allow",
+      "git add*": "allow",
+      "git commit*": "ask",
+      "git push*": "ask",
+      "git rebase*": "ask",
+      "git reset*": "ask",
+      "git clean*": "deny",
+      "rm -rf*": "deny",
+      "npm test*": "allow",
+      "npm run lint*": "allow",
+      "npm run build*": "allow",
+      "grep*": "allow",
+      "ls*": "allow",
+      "cat*": "allow"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+context: |
+  Tech stack: Python 3.12+, LangGraph, LangSmith, OTel, Poetry
+  Gestor de dependências: Poetry
+  Checkpointer (board): SqliteSaver/InMemorySaver (dev), PostgresSaver (prod)
+  HITL: interrupt() nativo + Redis/SSE (notificação) + POST /resume (ponte)
+  PII: mascarada na fronteira de entrada (Intake), ancorada em LGPD/FAPI-BR
+  Protocolos: MCP (X-as-a-Service: Intake/Platform/SRE), A2A (Collaboration/Facilitating: Architecture/Review)
+  Domain: operação do ciclo de vida de Open Finance
+  Usamos conventional commits
+  ADRs em docs/adr/ (convenção Nygard)
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+rules:
+  proposal:
+    - Always include a "Non-goals" section
+  tasks:
+    - Break tasks into chunks of max 2 hours

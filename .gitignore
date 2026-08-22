@@ -1,0 +1,27 @@
+# Secrets e credenciais
+.env
+.env.*
+!.env.example
+**/keycloak-token.json
+
+# Dependências
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Builds e artefatos
+dist/
+build/
+coverage/
+.venv/
+__pycache__/
+
+# Editor / SO
+.DS_Store
+.vscode/
+.idea/
+
+# Estado local do opencode
+.opencode/

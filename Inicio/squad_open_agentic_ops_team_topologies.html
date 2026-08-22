@@ -1,0 +1,142 @@
+<style>
+.tt-stream{background:#E1F5EE;border-color:#0F6E56}
+.tt-stream .tt-title{color:#085041}
+.tt-stream .tt-sub{color:#0F6E56}
+.tt-platform{background:#E6F1FB;border-color:#185FA5}
+.tt-platform .tt-title{color:#0C447C}
+.tt-platform .tt-sub{color:#185FA5}
+.tt-enabling{background:#EEEDFE;border-color:#534AB7}
+.tt-enabling .tt-title{color:#3C3489}
+.tt-enabling .tt-sub{color:#534AB7}
+.tt-complicated{background:#FAECE7;border-color:#993C1D}
+.tt-complicated .tt-title{color:#712B13}
+.tt-complicated .tt-sub{color:#993C1D}
+[data-mode="dark"] .tt-stream{background:#085041;border-color:#5DCAA5}
+[data-mode="dark"] .tt-stream .tt-title{color:#9FE1CB}
+[data-mode="dark"] .tt-stream .tt-sub{color:#5DCAA5}
+[data-mode="dark"] .tt-platform{background:#0C447C;border-color:#85B7EB}
+[data-mode="dark"] .tt-platform .tt-title{color:#B5D4F4}
+[data-mode="dark"] .tt-platform .tt-sub{color:#85B7EB}
+[data-mode="dark"] .tt-enabling{background:#3C3489;border-color:#AFA9EC}
+[data-mode="dark"] .tt-enabling .tt-title{color:#CECBF6}
+[data-mode="dark"] .tt-enabling .tt-sub{color:#AFA9EC}
+[data-mode="dark"] .tt-complicated{background:#712B13;border-color:#F0997B}
+[data-mode="dark"] .tt-complicated .tt-title{color:#F5C4B3}
+[data-mode="dark"] .tt-complicated .tt-sub{color:#F0997B}
+</style>
+<h2 class="sr-only">Fluxo da squad Open Agentic Ops colorido por tipo de time em Team Topologies: platform em azul, stream-aligned em verde-água, enabling em roxo, complicated-subsystem em coral, processos humanos em neutro</h2>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:1rem 0 0">
+
+<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:4px">
+<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#0F6E56;display:inline-block"></span>Stream-aligned</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#185FA5;display:inline-block"></span>Platform</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#534AB7;display:inline-block"></span>Enabling</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:#993C1D;display:inline-block"></span>Complicated-subsystem</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:var(--border-strong);display:inline-block"></span>Processo · humano</span>
+</div>
+
+<div style="font-size:12px;color:var(--text-muted);margin-bottom:2px">4 origens</div>
+<div style="display:flex;gap:8px;width:100%;max-width:660px;justify-content:center;flex-wrap:wrap">
+<div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;background:var(--surface-1)">
+<div style="font-size:12px;font-weight:500;color:var(--text-primary)">Cliente</div>
+</div>
+<div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;background:var(--surface-1)">
+<div style="font-size:12px;font-weight:500;color:var(--text-primary)">Regulatório · Informes</div>
+</div>
+<div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;background:var(--surface-1)">
+<div style="font-size:12px;font-weight:500;color:var(--text-primary)">Estratégia · Sensedia</div>
+</div>
+<div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;background:var(--surface-1)">
+<div style="font-size:12px;font-weight:500;color:var(--text-primary)">SRE (produção)</div>
+</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+
+<div class="tt-platform" style="width:280px;border:1px solid;border-radius:12px;padding:10px 16px;text-align:center">
+<div class="tt-title" style="font-size:15px;font-weight:500">Intake Agent</div>
+<div class="tt-sub" style="font-size:12px;opacity:0.9">Classifica domínio + ambiguidade · MCP</div>
+</div>
+<div style="font-size:13px;color:var(--text-muted);margin:2px 0">↓ resolve conforme ambiguidade ↓</div>
+
+<div style="display:flex;gap:16px;width:100%;max-width:460px;justify-content:center">
+<div style="flex:1;border:1px solid var(--border);border-radius:12px;padding:8px 10px;text-align:center;background:var(--surface-1)">
+<div style="font-size:12px;font-weight:500;color:var(--text-primary)">Baixa ambiguidade</div>
+<div style="font-size:11px;color:var(--text-secondary)">Intake rascunha a spec</div>
+</div>
+<div style="flex:1;border:1px solid var(--border-strong);border-radius:12px;padding:8px 10px;text-align:center;background:var(--surface-1)">
+<div style="font-size:12px;font-weight:500;color:var(--text-primary)">Alta ambiguidade</div>
+<div style="font-size:11px;color:var(--text-secondary)">Escalona — FDE autora</div>
+</div>
+</div>
+<div style="font-size:13px;color:var(--text-muted);margin:2px 0">↓ spec pronta · divide em 2 tarefas paralelas ↓</div>
+
+<div style="display:flex;gap:28px;width:100%;max-width:620px;margin-top:6px;align-items:flex-start;justify-content:center">
+
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">
+<div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px">Worktree A — backend</div>
+<div class="tt-stream" style="width:100%;border:1px solid;border-radius:12px;padding:10px 12px;text-align:center">
+<div class="tt-title" style="font-size:14px;font-weight:500">Feature agent (backend)</div>
+<div class="tt-sub" style="font-size:12px;opacity:0.9">feat/of-consent-field</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+<div style="display:flex;gap:8px;width:100%">
+<div class="tt-complicated" style="flex:1;border:1px solid;border-radius:12px;padding:8px 6px;text-align:center">
+<div class="tt-title" style="font-size:12px;font-weight:500">Architecture agent</div>
+<div class="tt-sub" style="font-size:11px">Collaboration · A2A</div>
+<div style="font-size:10px;color:var(--text-muted);margin-top:2px">diverge → pausa, escala FDE</div>
+</div>
+<div class="tt-platform" style="flex:1;border:1px solid;border-radius:12px;padding:8px 6px;text-align:center">
+<div class="tt-title" style="font-size:12px;font-weight:500">Platform agent</div>
+<div class="tt-sub" style="font-size:11px">X-as-a-Service · MCP</div>
+</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+<div class="tt-enabling" style="width:100%;border:1px solid;border-radius:12px;padding:10px 12px;text-align:center">
+<div class="tt-title" style="font-size:14px;font-weight:500">Review agent</div>
+<div class="tt-sub" style="font-size:12px">Facilitating · A2A</div>
+<div style="font-size:10px;color:var(--text-muted);margin-top:2px">diverge → pausa, escala FDE</div>
+</div>
+</div>
+
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">
+<div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px">Worktree B — frontend</div>
+<div class="tt-stream" style="width:100%;border:1px solid;border-radius:12px;padding:10px 12px;text-align:center">
+<div class="tt-title" style="font-size:14px;font-weight:500">Feature agent (frontend)</div>
+<div class="tt-sub" style="font-size:12px;opacity:0.9">feat/of-consent-ui</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+<div class="tt-platform" style="width:100%;border:1px solid;border-radius:12px;padding:10px 12px;text-align:center">
+<div class="tt-title" style="font-size:14px;font-weight:500">Platform agent</div>
+<div class="tt-sub" style="font-size:12px">X-as-a-Service · MCP</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+<div class="tt-enabling" style="width:100%;border:1px solid;border-radius:12px;padding:10px 12px;text-align:center">
+<div class="tt-title" style="font-size:14px;font-weight:500">Review agent</div>
+<div class="tt-sub" style="font-size:12px">Facilitating · A2A</div>
+<div style="font-size:10px;color:var(--text-muted);margin-top:2px">diverge → pausa, escala FDE</div>
+</div>
+</div>
+
+</div>
+
+<div style="font-size:13px;color:var(--text-muted);margin-top:4px">↓ as duas PRs convergem ↓</div>
+
+<div style="width:280px;border:1px solid var(--border);border-radius:12px;padding:10px 16px;text-align:center;background:var(--surface-1)">
+<div style="font-size:15px;font-weight:500;color:var(--text-primary)">HITL gate</div>
+<div style="font-size:13px;color:var(--text-secondary)">FDE aprova — inclusive specs do Intake</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+
+<div style="width:280px;border:1px solid var(--border);border-radius:12px;padding:10px 16px;text-align:center;background:var(--surface-1)">
+<div style="font-size:15px;font-weight:500;color:var(--text-primary)">Eval gate</div>
+<div style="font-size:13px;color:var(--text-secondary)">PromptFoo eval → deploy</div>
+</div>
+<div style="font-size:16px;color:var(--text-muted)">↓</div>
+
+<div class="tt-platform" style="width:280px;border:1px solid;border-radius:12px;padding:10px 16px;text-align:center">
+<div class="tt-title" style="font-size:15px;font-weight:500">SRE agent</div>
+<div class="tt-sub" style="font-size:13px">Monitora SLOs, error budget</div>
+</div>
+<div style="font-size:13px;color:var(--text-muted);margin-top:2px">↻ realimenta o Intake Agent (4ª origem)</div>
+
+</div>

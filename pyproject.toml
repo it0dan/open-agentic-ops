@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "open-agentic-ops"
+version = "0.1.0"
+description = "Squad agêntica autônoma que opera o ciclo de vida de Open Finance (Sensedia Open Agentic Ops)"
+authors = ["Sensedia"]
+readme = "README.md"
+packages = [{ include = "open_agentic_ops", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+langgraph = "^0.2.0"
+langchain = "^0.3.0"
+langsmith = "^0.1.0"
+opentelemetry-sdk = "^1.27.0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.27.0"
+opentelemetry-instrumentation-httpx = "^0.48b0"
+python-dotenv = "^1.0.1"
+httpx = "^0.27.0"
+
+[tool.poetry.extras]
+sqlite = ["langgraph-checkpoint-sqlite"]
+postgres = ["langgraph-checkpoint-postgres"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+ruff = "^0.7.0"
+langgraph-checkpoint-sqlite = "^2.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

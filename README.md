@@ -13,8 +13,36 @@ Este repo é o **runtime da squad**. O opencode é a ferramenta usada para desen
 | [`Inicio/HANDOFF-squad-agentica.md`](Inicio/HANDOFF-squad-agentica.md) | Handoff com decisões de maturação |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Visão estrutural corrente (C4) |
 | [`CONTEXT.md`](CONTEXT.md) | Glossário do domínio |
+| [`PROJECT.md`](PROJECT.md) | Contexto do projeto |
 | [`docs/adr/`](docs/adr/) | Log de decisões de arquitetura (ADRs) |
-| [`openspec/`](openspec/) | Proposal e pipeline spec-driven |
+| [`docs/sdd/feature-start-playbook.md`](docs/sdd/feature-start-playbook.md) | Playbook de início de feature (SDD/SPDD + OpenSpec) |
+| [`docs/sdd/feature-intake-template.md`](docs/sdd/feature-intake-template.md) | Template de Feature Intake Brief |
+| [`openspec/`](openspec/) | Pipeline spec-driven (proposal/design/spec/tasks) |
+
+## Desenvolvimento (SDD/SPDD + OpenSpec)
+
+Todo desenvolvimento segue o padrão **Spec-Driven Development (SDD)** e **Spec-Driven Product Development (SPDD)**, orquestrado pelo CLI `openspec` e pelos comandos `/opsx:*` do OpenCode.
+
+**Fluxo de nova feature:**
+
+```txt
+Feature Intake Brief
+→ Safe Analysis
+→ /opsx:propose
+→ Review OpenSpec
+→ Validate
+→ Apply
+→ Test
+→ Archive
+```
+
+- **Feature Intake Brief** em `docs/sdd/feature-intakes/<feature-name>.md` (template em `docs/sdd/feature-intake-template.md`).
+- **Safe analysis** antes de propor (sem modificar arquivos).
+- **`/opsx:propose <feature-name>`** cria `proposal.md`, `design.md`, `specs/<feature>/spec.md` e `tasks.md`.
+- **`/opsx:apply <feature-name>`** implementa as tasks.
+- **`/opsx:archive <feature-name>`** arquiva o change concluído em `openspec/archive/<date>-<feature>/`.
+
+O processo completo está em [`docs/sdd/feature-start-playbook.md`](docs/sdd/feature-start-playbook.md).
 
 ## Stack
 
@@ -40,11 +68,11 @@ Python + LangGraph (orquestração) + LangSmith (observabilidade/avaliação) + 
 - [x] Arquitetura de referência e diagrama
 - [x] Decisões de maturação (Graph Engineering, PII, stack, hexagonal)
 - [x] ADRs, glossário, visão de arquitetura
-- [ ] `proposal.md` (OpenSpec/SPDD)
-- [ ] `design.md → spec.md → tasks.md → prompt.md`
-- [ ] Implementação do grafo LangGraph
+- [x] Playbook de desenvolvimento agêntico (SDD/SPDD + OpenSpec) portado
+- [x] `proposal.md`, `design.md`, `spec.md`, `tasks.md`, `prompt.md` (OpenSpec/SPDD)
+- [x] Scaffold do projeto Python (Poetry)
+- [x] Implementação do grafo LangGraph (24/24 tasks, testes verdes)
 
 ## Regras
 
 Ver [`AGENTS.md`](AGENTS.md) para as regras de desenvolvimento e os papéis da squad.
-# open-agentic-ops

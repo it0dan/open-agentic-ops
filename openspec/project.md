@@ -147,7 +147,7 @@ docs/sdd/feature-intakes/feature-agent-loop.md
 
 Feature intention:
 
-Loop goal-based do Feature Agent (ADR-0016): transformar o `feature_node.py` de chamada única em loop verificável (goal = spec implementada + testes passando + lint limpo), com test/lint como ferramenta in-loop, teto de iterações, PII como hook determinístico e Guia com campo de ferramentas/checklist. É o achado central da definição da oferta (`Inicio/open-agentic-ops-definicao-oferta (3).md`) e destrava Architecture dinâmico e Review real.
+Loop goal-based do Feature Agent (ADR-0016): transformar o `feature_node.py` de chamada única em loop verificável (goal = spec implementada + testes passando + lint limpo), com test/lint como ferramenta in-loop, teto de iterações, PII como hook determinístico e Guia com campo de ferramentas/checklist. É o achado central da definição da oferta (`Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md`) e destrava Architecture dinâmico e Review real.
 
 Out of scope para esta feature:
 
@@ -158,7 +158,7 @@ Out of scope para esta feature:
 
 ## Decisões de arquitetura registradas (rodada de definição da oferta)
 
-Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via grilling (30 decisões, Q1–Q30). Decisões de arquitetura registradas como ADRs em `docs/adr/`:
+Revisão do documento `Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md` via grilling (30 decisões, Q1–Q30). Decisões de arquitetura registradas como ADRs em `docs/adr/`:
 
 - **ADR-0015** — multi-tenancy e isolamento por cliente (tenant_id no BoardState, claim JWT Keycloak, FDE por tenant)
 - **ADR-0016** — loop goal-based do Feature Agent (Loop Engineering)

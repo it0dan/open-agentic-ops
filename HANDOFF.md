@@ -22,9 +22,32 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **`/loops` interativo:** toggle Vertical removido (sempre horizontal); **nós arrastáveis** com persistência em `localStorage` (`fde-loop-node-positions`) + botão "Resetar layout"; arestas fixas pela ordem lógica; **CSS vars do React Flow** (`--xy-*`) sobrescritas para tema claro/dark; **drawer do agente completo** (histórico de eventos cronológico, duração + início, link para demanda). `LoopStage` estendido com `eventos`/`inicio`; `lib/loop-stages.ts` populado com eventos mock por etapa. Fix do build: `useReactFlow()` exige `ReactFlowProvider` → separado `LoopCanvasInner` (hook) do wrapper exportado `LoopCanvas` (provider).
 - **Mock populado:** `lib/mock-data.ts` agora tem **23 demandas** (3 originais + 20 novas), cobrindo todos os status do `FLUXO`, origens (cliente/regulatorio/estrategia/sre), domínios (backend/frontend/ambos) e ambiguidades.
 
-**Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.** 8 commits aguardando push para `origin/main`.
+**Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.**
 
 **Validação (estado atual):** `poetry run pytest` → **47 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
+
+## Encerramento da sessão (docs + commits)
+
+**Tarefa:** finalizar a sessão — atualizar todos os docs (HANDOFF, README, ARCHITECTURE, CONTRIBUTING, referências ao arquivo de definição movido) e commitar o trabalho concluído.
+
+### ✅ Concluído
+
+**Commits criados (aguardando push para `origin/main`):**
+- `d9ef63b` — `feat(runtime)`: gates condicionais (ADR-0017) e SRE real (ADR-0019)
+- `fbdf286` — `fix(console)`: modal fecha por ESC/clique-fora e decisão do FDE tipada
+- `867d596` — `docs`: HANDOFF, ADR-0017 e reorganização do arquivo de definição
+
+**Docs atualizados:**
+- `HANDOFF.md` — seções de trabalho desta sessão (gates + SRE), estado atual, próximos passos (itens 1 e 2 concluídos), referência ao arquivo de definição movido.
+- `README.md` — seção "Estado" com itens concluídos (loop goal-based, gates condicionais, SRE real); tabela de documentação ganhou `CONTRIBUTING.md`.
+- `ARCHITECTURE.md` — diagrama do grafo atualizado (nó `deploy`, roteamento condicional HITL/Eval); tabela de componentes com `deploy_node` e descrições dos gates; seção "Retomada do FDE" com os 3 caminhos de decisão tipada.
+- `CONTRIBUTING.md` — **novo**: guia de contribuição (SDD/SPDD + OpenSpec, estrutura canônica, padrões de código, validação, commits, encerramento de sessão).
+- `openspec/project.md` — referências ao arquivo de definição movido para `Inicio/definicoes/`.
+
+**Reorganização:** `Inicio/open-agentic-ops-definicao-oferta (3).md` movido para `Inicio/definicoes/` (conteúdo idêntico, git detectou como rename).
+
+### Estado do git
+Working tree com mudanças de docs não commitadas (aguardando commit). 3 commits de código/docs anteriores aguardando push para `origin/main`.
 
 ## Trabalho desta sessão (gates condicionais + decisão tipada do FDE + fix do modal)
 
@@ -312,7 +335,7 @@ Commits coesos criados nesta sessão (aguardando push):
 
 ### Rodada de definição da oferta (grilling — 30 decisões, Q1–Q30)
 
-Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via grilling (7 rodadas, ordem do documento: Origens → Intake → Feature → Eval/Deploy → HITL → SRE → Board). Todas as decisões `[DECISÃO PENDENTE]` e tensões descobertas ao cruzar com o código foram resolvidas. **Nenhum código alterado — apenas registro em docs.**
+Revisão do documento `Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md` via grilling (7 rodadas, ordem do documento: Origens → Intake → Feature → Eval/Deploy → HITL → SRE → Board). Todas as decisões `[DECISÃO PENDENTE]` e tensões descobertas ao cruzar com o código foram resolvidas. **Nenhum código alterado — apenas registro em docs.**
 
 - **Origens (§5):** `origem_subtipo` como campo genérico (Q1); vínculo demanda↔cliente = `tenant_id` (Q2, deferido p/ §11); canais de Cliente adiados p/ Fase 2 com PII uniforme (Q3); detecção regulatória = spike pendente (Q4); Audit do SRE deferida (Q5).
 - **Intake (§6):** fallback→alta **acoplado** à similaridade semântica por precedente (Q6/Q7 — não isolado, senão quebra o caso de baixa mais comum); PII chave Pix + conta/agência com regex conservador agora (Q8); novo motivo de discordância na Audit deferido (Q9).

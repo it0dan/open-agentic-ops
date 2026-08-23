@@ -64,9 +64,13 @@ O sistema é composto por três containers lógicos: o **runtime da squad** (gra
                     │  fan-in ◀── review_node (A2A, por worktree)          │
                     │     │                                                │
                     │     ▼                                                │
-                    │  hitl_gate (interrupt → FDE aprova via POST /resume) │
+                    │  hitl_gate (interrupt → FDE decide via POST /resume) │
+                    │     ├─ aprovado ──▶ eval_gate (PromptFoo trajectory) │
+                    │     └─ rejeitado ──▶ END (status terminal)           │
                     │     ▼                                                │
-                    │  eval_gate (PromptFoo trajectory eval)               │
+                    │  eval_gate                                           │
+                    │     ├─ aprovado ──▶ deploy_node (Platform, MCP)      │
+                    │     └─ reprovado ──▶ hitl_gate (volta ao FDE)        │
                     │     ▼                                                │
                     │  sre_node (monitora SLOs/error budget)               │
                     │     └──▶ gera task ──▶ intake_node (4ª origem)       │
@@ -87,9 +91,10 @@ O **board** (checkpointer) persiste o estado de todos os nós e provê a view qu
 | `platform_node` | Platform | MCP | Testes, lint, deploy, observabilidade como serviço |
 | `review_node` | Enabling | A2A | Feedback de PR; orienta, não bloqueia |
 | `architecture_node` | Complicated-subsystem | A2A | Discussão de contrato/compliance; aconselha, não veta |
-| `sre_node` | Platform (extensão) | MCP | Monitora SLOs/error budget; gera task que realimenta o Intake como 4ª origem |
-| `hitl_gate` | processo | — | `interrupt()` → FDE aprova via `POST /resume` |
-| `eval_gate` | processo | — | PromptFoo trajectory eval antes do deploy |
+| `sre_node` | Platform (extensão) | MCP | Monitora SLOs/error budget; produz `ResultadoMonitoramento` estruturado e gera task que realimenta o Intake como 4ª origem (ADR-0019) |
+| `deploy_node` | Platform | MCP | Deploy pós-Eval aprovado (stub até a infra de deploy existir) |
+| `hitl_gate` | processo | — | `interrupt()` → FDE decide via `POST /resume`; rejeitado é status terminal (ADR-0017) |
+| `eval_gate` | processo | — | PromptFoo trajectory eval antes do deploy; reprovado volta ao HITL (ADR-0017) |
 
 ## Board (checkpointer)
 
@@ -98,7 +103,7 @@ O **board** é o checkpointer do grafo (ADR-0002). Persiste o estado de todos os
 ## Retomada do FDE (`POST /resume`)
 
 O FDE conecta-se ao grafo via `POST /resume` em dois momentos:
-- **HITL gate** — aprova/rejeita o merge (ADR-0005).
+- **HITL gate** — decide o merge via campo tipado `decisao` (`aprovado` | `aprovado_com_ressalvas` | `rejeitado`) + `observacao` (ADR-0017). `rejeitado` é status terminal; `aprovado_com_ressalvas` não bloqueia o fluxo, só registra a preocupação.
 - **Autoria de spec** (alta ambiguidade) — injeta a spec autorada no estado do grafo, que continua o fluxo (ADR-0009).
 
 ## Console do FDE (API + frontend)

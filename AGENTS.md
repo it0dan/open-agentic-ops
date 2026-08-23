@@ -44,6 +44,7 @@ Este repo é o **runtime da squad**. O opencode é a ferramenta usada para desen
 - **Estrutura OpenSpec canônica:** `openspec/changes/<feature>/{proposal.md, design.md, specs/<feature>/spec.md, tasks.md}`; changes concluídos vão para `openspec/archive/<date>-<feature>/`. Não usar `openspec/changes/archive/`. O `prompt.md` é artefato SPDD (fora do schema OpenSpec). ADRs permanecem em `docs/adr/` (convenção Nygard).
 - **Comandos `/opsx:*`:** `explore`, `propose`, `apply`, `archive` (em `.opencode/commands/`) orquestram o fluxo OpenSpec via CLI `openspec`.
 - **Ao finalizar a sessão, gerar/atualizar `HANDOFF.md` na raiz** com o estado atual, decisões fechadas, artefatos, próximos passos e pendências. Este é o padrão obrigatório de encerramento de sessão.
+- Veja [`CONTRIBUTING.md`](CONTRIBUTING.md) para o guia de contribuição (fluxo SDD/SPDD, validação, commits).
 - Siga as convenções do projeto; mudanças mínimas e alinhadas à tarefa.
 - Rode lint e testes antes de concluir, quando disponíveis.
 - Sem comentários não solicitados no código.

@@ -7,7 +7,7 @@ Glossário do domínio da squad agêntica que opera o ciclo de vida de Open Fina
 **Board**:
 O estado corrente de todas as demandas da squad, materializado pelo checkpointer do grafo LangGraph (cada execução = um thread). Não é um sistema separado.
 _Avoid_: backlog, fila, kanban
-_Nota de UI_: no console do FDE, a tela que lista as demandas chama-se **Registry** (rota `/registry`) — "Board" permanece como termo arquitetural (o checkpointer), não como nome de tela, para não colidir com Dashboard nem evocar Kanban.
+_Nota de UI_: no console do FDE, a tela que lista as demandas chama-se **Tasks** (rota `/tasks`) — "Board" permanece como termo arquitetural (o checkpointer), não como nome de tela, para não colidir com Dashboard nem evocar Kanban. Nova demanda é criada via modal no Tasks; autoria de spec acontece no detalhe da demanda.
 
 **Origem**:
 Uma das 4 entradas que alimentam o board: Cliente, Regulatório/Informes, Estratégia/Sensedia, SRE (produção). Cada item do board é tagueado pela origem.

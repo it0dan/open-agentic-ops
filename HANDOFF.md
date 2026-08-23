@@ -12,7 +12,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Evolução do console (sessões recentes) — concluída e validada:**
 - **Login simétrico + guard na raiz:** login centralizado simetricamente, redirect pós-login para `/dashboard`; rota raiz `/` com guard client (`components/home-redirect.tsx`) → `/dashboard` ou `/login`.
-- **Board → Demandas → Tasks → Registry:** rota `/board` renomeada para `/demandas`, depois `/tasks` e finalmente `/registry` (pastas movidas), com **redirects de compatibilidade** em `app/(dashboard)/board/` e `app/(dashboard)/tasks/` (307 → `/registry` e `/registry/[id]`). Sidebar atualizada ("Registry" + novo item "Loops").
+- **Board → Demandas → Tasks → Registry → Tasks:** rota final **`/tasks`** (e `/tasks/[id]`), com **redirect de compatibilidade** em `app/(dashboard)/board/` (307 → `/tasks` e `/tasks/[id]`). Sidebar atualizada ("Tasks" + item "Loops"). A rota `/registry` foi renomeada para `/tasks` na refatoração de nomenclatura (frontend e backend alinhados em `tasks`/`task`).
 - **Página `/loops` dedicada:** grafo React Flow full-viewport (sem modal), toolbar fixa, `components/content-container.tsx` remove o `max-w-7xl` na rota `/loops`.
 - **Filtros por facet (dropdowns):** `components/filter-bar.tsx` reescrito — 3 botões de facet (Origem/Status/Domínio) com `Popover` + `Checkbox`, contador no label, acento de cor quando ativo, botão "Limpar (n)".
 - **Kanban read-only:** `components/kanban-board.tsx` — **removido todo o DnD** (`@dnd-kit`), cards são `Link` → detalhe, 9 colunas do `FLUXO` com **colunas vazias auto-colapsáveis** (faixa fina ~48px com label vertical, clique expande temporariamente). Toggle Lista/Kanban persistido em `localStorage` (`fde-visao-demandas`).
@@ -22,9 +22,9 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **`/loops` interativo:** toggle Vertical removido (sempre horizontal); **nós arrastáveis** com persistência em `localStorage` (`fde-loop-node-positions`) + botão "Resetar layout"; arestas fixas pela ordem lógica; **CSS vars do React Flow** (`--xy-*`) sobrescritas para tema claro/dark; **drawer do agente completo** (histórico de eventos cronológico, duração + início, link para demanda). `LoopStage` estendido com `eventos`/`inicio`; `lib/loop-stages.ts` populado com eventos mock por etapa. Fix do build: `useReactFlow()` exige `ReactFlowProvider` → separado `LoopCanvasInner` (hook) do wrapper exportado `LoopCanvas` (provider).
 - **Mock populado:** `lib/mock-data.ts` agora tem **23 demandas** (3 originais + 20 novas), cobrindo todos os status do `FLUXO`, origens (cliente/regulatorio/estrategia/sre), domínios (backend/frontend/ambos) e ambiguidades.
 
-**Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry** (rota `/registry`, redirects 307 de `/tasks` e `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`RegistryPage`, `ColumnRegistry`). 5 commits pusheados para `origin/main`.
+**Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.** 8 commits aguardando push para `origin/main`.
 
-**Validação (estado atual):** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **15/15 passed**; smoke test das rotas (`/login`, `/dashboard`, `/registry`, `/graph`, `/audit`, detalhe → 200; `/board`, `/tasks`, `/loops`, `/auditoria` → 307 redirect).
+**Validação (estado atual):** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **12/12 passed**; smoke test das rotas (`/login`, `/dashboard`, `/tasks`, `/graph`, `/audit`, detalhe → 200; `/board` → 307 redirect; `/registry` e `/intake` → 404).
 
 ## Trabalho desta sessão (encerramento)
 
@@ -112,7 +112,7 @@ Working tree com mudanças não commitadas (aguardando commit):
 **Frontend:**
 - **Status `aguardando_autoria`**: adicionado ao tipo `Status`, `STATUS_LABEL`, `StatusBadge` e ao `FLUXO` do detalhe. Demanda de alta ambiguidade parada na autoria de spec não fica mais "presa" em 0%.
 - **Indicador de modo demo** no Registry: banner âmbar quando a API está indisponível (dados sintéticos).
-- **Botão "Nova demanda" removido** do Registry (criação fica só no Intake).
+- **Botão "Nova demanda" removido** do Registry (criação fica só no Intake). *Nota: revertido na sessão seguinte — o botão voltou no Tasks via `NovaDemandaModal` e a página `/intake` foi removida (ver seção "Refatoração de nomenclatura + UX do console").*
 - **Fix "not found" no detalhe**: estado de carregamento (skeletons) antes de `notFound()`, para demandas criadas (não presentes no mock).
 - **Textos HITL esclarecidos**: painel HITL e Intake agora comunicam que o gate revisa o **resultado** da implementação (worktrees/ADRs/feedbacks), não a criação da demanda.
 
@@ -123,6 +123,35 @@ Commits coesos criados nesta sessão:
 - `b86cf74` — `feat(runtime)`: loop goal-based do Feature Agent (ADR-0016)
 - `79addd7` — `fix(api)`: habilitar CORS para o console do FDE
 - `6e13bfe` — `fix(console)`: representar aguardando_autoria, modo demo e corrigir detalhe
+
+## Trabalho desta sessão (refatoração de nomenclatura + UX do console)
+
+**Tarefa:** validar o console no navegador, corrigir problemas de UX/fluxo e unificar a nomenclatura frontend/backend em `tasks`/`task`.
+
+### ✅ Concluído
+
+**Backend:**
+- **`_resumo` enriquecido** (`api/main.py`): `GET /tasks` agora retorna `spec` (texto completo), `criado_em` (timestamp do `classificacao_intake`), `progresso` (posição do status no fluxo), `agente_atual` (mapeado por status) e `erros` (worktrees com status `falhou`). Alinha a API com os campos ricos que o mock já exibia (barra de completude do ciclo de vida, agente em tempo real).
+
+**Frontend — nomenclatura `/registry` → `/tasks`:**
+- Páginas movidas de `app/(dashboard)/registry/` → `app/(dashboard)/tasks/` (lista + detalhe + testes).
+- Componente `ColumnRegistry` → `ColumnTasks`; `RegistryPage` → `TasksPage`.
+- Links atualizados: dashboard, sidebar, board (redirects), login.
+- Sidebar: "Registry" → "Tasks"; item "Intake" removido.
+- Rotas antigas `/registry` e `/intake` agora retornam **404**; `/board` → 307 → `/tasks`.
+
+**Frontend — página `/intake` removida:**
+- Novo componente `NovaDemandaModal` (`components/nova-demanda-modal.tsx`): Dialog shadcn com formulário origem + texto, chama `POST /intake`.
+- Botão "Nova demanda" no Tasks abre o modal.
+- **Autoria de spec** (alta ambiguidade) movida do Intake para o **detalhe da demanda** (painel quando status = `aguardando_autoria`).
+
+**Validação:** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo; `npm run lint` → limpo; `npm run build` → OK (rotas `/tasks`); `npm test` → **12/12 passed** (3 testes do intake removidos junto com a página).
+
+### Estado do git
+Commits coesos criados nesta sessão (aguardando push):
+- `f1c6004` — `fix(console)`: exibir spec e ordenar registry por criacao
+- `dd0acc6` — `feat(api)`: enriquecer lista de demandas com progresso, agente e erros
+- `c3d6900` — `refactor(console)`: unificar nomenclatura tasks e remover pagina intake
 
 ## Decisões fechadas
 
@@ -194,6 +223,7 @@ Commits coesos criados nesta sessão:
 - **E7:** **`/loops` interativo** — nós arrastáveis (persistência localStorage + reset), sempre horizontal, controles com tema do design system, drawer do agente com histórico completo + live update (polling 4s).
 - **E8:** **Mock populado** — 23 demandas cobrindo todos os status/origens/domínios/ambiguidades.
 - **E9:** **Nomenclatura alinhada ao CONTEXT.md** — Loop→Graph (`/loops`→`/graph`), Auditoria→Audit (`/auditoria`→`/audit`), Kanban→Colunas (`kanban-board.tsx`→`column-board.tsx`, toggle "Lista/Colunas"); redirects 307 de compatibilidade; jornada do FDE completada (autoria de spec no Intake via `POST /resume`, HITL gate no Graph, Audit como calibração).
+- **E10:** **Unificação de nomenclatura em `tasks`/`task`** — `/registry` → `/tasks` (frontend e backend alinhados); página `/intake` removida, criação de demanda via `NovaDemandaModal` no Tasks (chama `POST /intake`); autoria de spec movida para o detalhe da demanda (status `aguardando_autoria`); `/registry` e `/intake` retornam 404, `/board` → 307 → `/tasks`.
 
 ### Rodada de definição da oferta (grilling — 30 decisões, Q1–Q30)
 
@@ -245,16 +275,16 @@ Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via gril
 | `frontend/app/login/page.tsx` | Login split-screen simétrico, redirect → `/dashboard` |
 | `frontend/app/(dashboard)/layout.tsx` | Layout do dashboard (sidebar + topbar) usando `ContentContainer` |
 | `frontend/components/content-container.tsx` | Container que remove `max-w-7xl` na rota `/graph` (full-viewport) |
-| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Registry/Graph/Intake/Audit |
-| `frontend/app/(dashboard)/registry/page.tsx` | Tela de Registry (ex-Board/Tasks): KPIs, filtros por facet, toggle Lista/Colunas, cards |
-| `frontend/app/(dashboard)/registry/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **metadados sticky** |
-| `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/registry`) |
-| `frontend/app/(dashboard)/tasks/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/registry`) |
+| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Tasks/Graph/Audit |
+| `frontend/app/(dashboard)/tasks/page.tsx` | Tela de Tasks (ex-Registry/Board): KPIs, filtros por facet, toggle Lista/Colunas, cards, botão "Nova demanda" (modal) |
+| `frontend/app/(dashboard)/tasks/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **painel de autoria de spec** (status `aguardando_autoria`), metadados sticky |
+| `frontend/components/nova-demanda-modal.tsx` | Modal de criação de demanda (Dialog shadcn: origem + texto) → `POST /intake` |
+| `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/tasks`) |
 | `frontend/app/(dashboard)/graph/page.tsx` | Página `/graph` full-viewport com `LoopCanvas` |
 | `frontend/app/(dashboard)/loops/page.tsx` | **Redirect de compatibilidade** (307 → `/graph`) |
 | `frontend/app/(dashboard)/auditoria/page.tsx` | **Redirect de compatibilidade** (307 → `/audit`) |
 | `frontend/components/filter-bar.tsx` | Filtros por facet (3 dropdowns popover+checkbox) |
-| `frontend/components/column-registry.tsx` | Colunas read-only (ex-Kanban), 9 colunas auto-colapsáveis, cards clicáveis |
+| `frontend/components/column-tasks.tsx` | Colunas read-only (ex-Kanban/Registry), 9 colunas auto-colapsáveis, cards clicáveis |
 | `frontend/components/loop-canvas.tsx` | Grafo React Flow interativo (nós arrastáveis, reset, drawer do agente, HITL gate) |
 | `frontend/components/loop-status.tsx` | Card do Loop clicável → `/graph`; define `LoopStage` (com `eventos`/`inicio`) |
 | `frontend/lib/loop-stages.ts` | `montarStages` (extraído) com eventos mock por etapa |
@@ -325,7 +355,7 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Registry, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.**
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** 8 commits aguardando push para `origin/main`.
 
 1. **Roteamento condicional dos gates (ADR-0017)** — corrigir o bug "gates não gateiam": arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganha `rejeitado` + `pending()` inclui `aguardando_autoria`.
 2. **SRE real (ADR-0019)** — `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API (fecha o loop ADR-0010).

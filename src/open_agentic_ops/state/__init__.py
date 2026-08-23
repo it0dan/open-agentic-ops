@@ -89,6 +89,7 @@ class ClassificacaoIntake(TypedDict):
 
 
 class BoardState(TypedDict, total=False):
+    thread_id: str
     origem: Origem
     origem_subtipo: OrigemSubtipo | None
     prioridade: Prioridade

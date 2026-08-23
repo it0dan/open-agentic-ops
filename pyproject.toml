@@ -18,6 +18,10 @@ python-dotenv = "^1.0.1"
 httpx = "^0.27.0"
 fastapi = "^0.115.0"
 uvicorn = "^0.32.0"
+sentence-transformers = "^3.0.0"
+pgvector = "^0.3.0"
+psycopg = { version = "^3.2.0", extras = ["binary"] }
+langgraph-checkpoint-postgres = {version = "^2.0.25", optional = true}
 
 [tool.poetry.extras]
 sqlite = ["langgraph-checkpoint-sqlite"]

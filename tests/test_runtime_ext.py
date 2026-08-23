@@ -13,8 +13,10 @@ from open_agentic_ops.nodes.intake import (
     classificar_dominio,
     salvar_heuristica,
 )
-from open_agentic_ops.nodes.intake_node import intake_node
+from open_agentic_ops.nodes.intake_node import make_intake_node
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
+
+intake_node = make_intake_node()
 
 
 def test_intake_registra_classificacao():

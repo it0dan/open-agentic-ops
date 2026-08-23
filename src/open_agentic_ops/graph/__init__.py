@@ -8,7 +8,7 @@ worktrees paralelos. O checkpointer é o board (ADR-0002).
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
@@ -17,7 +17,7 @@ from open_agentic_ops.gates.eval_gate import make_eval_gate
 from open_agentic_ops.gates.hitl_gate import hitl_gate
 from open_agentic_ops.nodes.architecture_node import make_architecture_node
 from open_agentic_ops.nodes.feature_node import make_feature_node
-from open_agentic_ops.nodes.intake_node import intake_node, route_by_ambiguity
+from open_agentic_ops.nodes.intake_node import make_intake_node, route_by_ambiguity
 from open_agentic_ops.nodes.platform_node import _NoopTools, make_platform_node
 from open_agentic_ops.nodes.review_node import make_review_node
 from open_agentic_ops.nodes.sre_node import make_sre_node
@@ -128,6 +128,8 @@ def build_graph(
     eval_runner: Callable[[str], ResultadoEval] | None = None,
     criar_demanda: Callable[[str], str] | None = None,
     monitorar: Callable[[], dict] | None = None,
+    buscar_precedentes: Callable[..., Sequence[object]] | None = None,
+    registrar_precedente: Callable[..., None] | None = None,
 ) -> StateGraph:
     """Monta o grafo da squad com os nós e arestas condicionais."""
     feature_backend = make_feature_node("backend", llm=llm, tools=tools, skill_dir=skill_dir)
@@ -136,12 +138,17 @@ def build_graph(
     architecture = make_architecture_node()
     review = make_review_node()
     eval_gate = make_eval_gate(runner=eval_runner)
-    sre = make_sre_node(monitorar=monitorar, criar_demanda=criar_demanda)
+    sre = make_sre_node(
+        monitorar=monitorar,
+        criar_demanda=criar_demanda,
+        registrar_precedente=registrar_precedente,
+    )
     deploy = make_deploy_node(tools=tools)
+    intake = make_intake_node(buscar_precedentes=buscar_precedentes)
 
     builder = StateGraph(BoardState)
 
-    builder.add_node("intake", intake_node)
+    builder.add_node("intake", intake)
     builder.add_node("rascunha_spec", _rascunha_spec)
     builder.add_node("escala_fde", _escala_fde)
     builder.add_node("autoria_spec", _autoria_spec)

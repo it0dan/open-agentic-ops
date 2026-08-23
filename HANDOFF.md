@@ -562,19 +562,67 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 - `c953d56` — `refactor(console)`: alinhar nomenclatura ao CONTEXT.md e completar jornada do FDE
 - `45aa19b` — `docs`: arquivar change fde-console e atualizar rotas `/graph` e `/audit`
 
+## Trabalho desta sessão (Intake Agent — decisão 2: similaridade semântica pgvector)
+
+**Tarefa:** Implementar a decisão 2 da seção 6 (substituir a keyword literal "sem precedente" por busca por similaridade semântica via pgvector), com stack toda opensource (embeddings via Sentence-Transformers local; LLM via AI Gateway só para texto).
+
+### ✅ Concluído nesta sessão
+
+**SDD/SPDD:**
+- **Feature Intake Brief** criado em `docs/sdd/feature-intakes/intake-similaridade-semantica.md`.
+- **Safe analysis** realizada (somente leitura): mapeou `intake_node` como função pura sem DI, ausência de camada de conexão Postgres reutilizável, campo `domino` (typo), multi-tenancy fora de escopo.
+- **Change OpenSpec** `intake-similaridade-semantica` criado em `openspec/changes/intake-similaridade-semantica/` com `proposal.md`, `design.md`, `specs/intake-similaridade-semantica/spec.md`, `tasks.md`. `openspec validate` → **válido**; status 4/4 artefatos completos.
+
+**Infra opensource:**
+- **`docker-compose.yml`** criado (Postgres + `pgvector/pgvector:pg16`, volume persistente, healthcheck). Postgres **validado** (`docker compose up -d` → healthy).
+- **`.env.example`** atualizado com `DATABASE_URL`, `SIMILARIDADE_THRESHOLD=0.75`, `SIMILARIDADE_N=5`.
+
+**Dependências:**
+- `pyproject.toml` + `poetry.lock` atualizados com `sentence-transformers`, `pgvector`, `psycopg[binary]`. `poetry install` concluído (torch, transformers, sentence-transformers, pgvector, psycopg instalados).
+
+**Implementação (backend):**
+- **`src/open_agentic_ops/embeddings/__init__.py`** — lazy-load do SentenceTransformer (`paraphrase-multilingual-MiniLM-L12-v2`) + `gerar_embedding(texto)`.
+- **`src/open_agentic_ops/similaridade/__init__.py`** — conector pgvector (psycopg), migração SQL (extensão `vector` + tabela `precedentes`), `buscar_precedentes`, `registrar_precedente`, `inicializar_schema`, degradação graciosa. Query corrigida para `status_terminal = ANY(%s)`.
+- **`src/open_agentic_ops/nodes/intake_node.py`** — transformado em factory `make_intake_node(buscar_precedentes=...)`; busca precedentes, reforça baixa/fallback de alta, referencia `thread_id` na justificativa; `route_by_ambiguity` preservada.
+- **`src/open_agentic_ops/nodes/sre_node.py`** — `make_sre_node` aceita `registrar_precedente` e registra precedente quando a demanda atinge `monitorado`.
+- **`src/open_agentic_ops/state/__init__.py`** — adicionado campo `thread_id` ao `BoardState`.
+- **`src/open_agentic_ops/graph/__init__.py`** — `build_graph` aceita `buscar_precedentes`/`registrar_precedente`; usa `make_intake_node`.
+- **`api/main.py`** — wirea `buscar_precedentes`/`registrar_precedente` no `build_graph`; injeta `thread_id` no estado inicial do `POST /intake` e `criar_demanda`.
+
+**Testes:**
+- Novos: `tests/test_embeddings.py` (mock do modelo), `tests/test_similaridade.py` (mock do conector), testes de integração no intake (mock da busca de precedentes) em `tests/test_intake.py`.
+- Atualizados: `test_intake.py` e `test_runtime_ext.py` usam `make_intake_node()`.
+- **Validação:** `poetry run pytest` → **61 passed**; `poetry run ruff check .` → limpo; frontend `npm run lint` → limpo, `npm test` → **19 passed**, `npm run build` → OK.
+- **Infra validada:** `inicializar_schema()` + `registrar_precedente` + `buscar_precedentes` testados contra o Postgres real (precedente similar retorna `thread-test` score 1.0; texto diferente retorna vazio).
+
+### ✅ Finalizado (encerramento da sessão)
+
+- **ADR-0021** — `docs/adr/0021-use-pgvector-for-semantic-precedent-search.md` revisado e confirmado (Accepted).
+- **Extra `langgraph-checkpoint-postgres`** — resolvido: `langgraph-checkpoint-postgres@^2.0.25` (compatível com LangGraph 0.2.x) adicionado ao extra `postgres` no `pyproject.toml` + `poetry.lock`; `poetry install --extras postgres` concluído; `import langgraph.checkpoint.postgres` OK.
+- **Arquivado** — change movido para `openspec/archive/2026-08-23-intake-similaridade-semantica/` (padrão correto). 26/26 tasks completas.
+- **"Próximos passos"** — decisão 2 marcada como concluída (ver abaixo).
+- **Commit** — conventional commit (`feat(intake): ...`). Push somente após confirmação do usuário (regra AGENTS.md).
+
+### Estado do git
+Working tree **com mudanças não commitadas** (decisão 2 implementada, ainda não arquivada/commitada):
+- Modificados: `.env.example`, `api/main.py`, `poetry.lock`, `pyproject.toml`, `src/open_agentic_ops/graph/__init__.py`, `src/open_agentic_ops/nodes/intake_node.py`, `src/open_agentic_ops/nodes/sre_node.py`, `src/open_agentic_ops/state/__init__.py`, `tests/test_intake.py`, `tests/test_runtime_ext.py`.
+- Novos (untracked): `docker-compose.yml`, `docs/adr/0021-use-pgvector-for-semantic-precedent-search.md`, `docs/sdd/feature-intakes/intake-similaridade-semantica.md`, `openspec/changes/`, `src/open_agentic_ops/embeddings/`, `src/open_agentic_ops/similaridade/`, `tests/test_embeddings.py`, `tests/test_similaridade.py`.
+- Branch: `main`; último commit `e50f350`.
+
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** **Intake Agent (decisão 1, fallback de ambiguidade): change OpenSpec `intake-fallback-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/` (precedência alta→baixa→fallback `alta`, lista `baixa_ambiguidade`, 48 passed).** **Intake Agent (decisão 3, PII financeiro): change OpenSpec `intake-pii-financeiro` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-pii-financeiro/` (CHAVE_PIX UUID + CONTA_BANCARIA, 51 passed).** **Intake Agent (decisão 4, novo motivo de discordância na Audit): change OpenSpec `intake-audit-motivo-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/` (contador 'ambíguo demais para keyword' via `POST /auditoria/ambigua`, 53 passed).** Tudo commitado e pusheado para `origin/main`.
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** **Intake Agent (decisão 1, fallback de ambiguidade): change OpenSpec `intake-fallback-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/` (precedência alta→baixa→fallback `alta`, lista `baixa_ambiguidade`, 48 passed).** **Intake Agent (decisão 3, PII financeiro): change OpenSpec `intake-pii-financeiro` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-pii-financeiro/` (CHAVE_PIX UUID + CONTA_BANCARIA, 51 passed).** **Intake Agent (decisão 4, novo motivo de discordância na Audit): change OpenSpec `intake-audit-motivo-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/` (contador 'ambíguo demais para keyword' via `POST /auditoria/ambigua`, 53 passed).** **Intake Agent (decisão 2, similaridade semântica pgvector): change OpenSpec `intake-similaridade-semantica` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-similaridade-semantica/` (Sentence-Transformers local + pgvector, `make_intake_node` com DI, extra `langgraph-checkpoint-postgres@^2.0.25` resolvido, 61 passed).** Tudo commitado e pusheado para `origin/main`.
 
 1. ~~**Intake Agent — decisão 1 (fallback de ambiguidade)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-fallback-ambiguidade` implementado e arquivado em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/`. `classificar_ambiguidade` com precedência de 3 níveis (alta → baixa → fallback `alta`), nova lista `baixa_ambiguidade` em `intake.py`/`heuristica.json`, teste novo do fallback. **48 passed, ruff limpo.**
 2. ~~**Intake Agent — decisão 3 (PII financeiro)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-pii-financeiro` implementado e arquivado em `openspec/archive/2026-08-23-intake-pii-financeiro/`. `pii/__init__.py` ganhou 2 novos `PadraoPII`: `CHAVE_PIX` (UUID, categoria sensível) e `CONTA_BANCARIA` (permissivo com separador, categoria sensível). `CHAVE_PIX` ordenado antes de `TELEFONE` para evitar conflito de regex. **51 passed, ruff limpo.**
-3. ~~**Intake Agent — decisão 4 (novo motivo de discordância na Audit)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-audit-motivo-ambiguidade` implementado e arquivado em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/`. Contador em memória "ambíguo demais para keyword" via `POST /auditoria/ambigua` (não toca a heurística), card de métrica + botão "Ambíguo" na tela Audit. **53 passed, ruff limpo; frontend 19 passed.** Resta a decisão 2 (similaridade semântica pgvector — depende de infra).
-4. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
-5. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
-6. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra. **PRÓXIMO PASSO.**
-7. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
-8. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
-9. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
+3. ~~**Intake Agent — decisão 4 (novo motivo de discordância na Audit)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-audit-motivo-ambiguidade` implementado e arquivado em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/`. Contador em memória "ambíguo demais para keyword" via `POST /auditoria/ambigua` (não toca a heurística), card de métrica + botão "Ambíguo" na tela Audit. **53 passed, ruff limpo; frontend 19 passed.**
+4. ~~**Intake Agent — decisão 2 (similaridade semântica pgvector)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-similaridade-semantica` implementado e arquivado em `openspec/archive/2026-08-23-intake-similaridade-semantica/`. Substitui a keyword literal "sem precedente" por busca por similaridade semântica (Sentence-Transformers local + pgvector). `make_intake_node(buscar_precedentes=...)` com DI, `registrar_precedente` no nó SRE, `thread_id` na justificativa, degradação graciosa. Extra `langgraph-checkpoint-postgres@^2.0.25` resolvido. **61 passed, ruff limpo; frontend 19 passed.**
+5. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
+6. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
+7. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra. **PRÓXIMO PASSO.**
+8. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
+9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+10. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
 
 ## Fontes-chave
 

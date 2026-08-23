@@ -28,6 +28,7 @@ from open_agentic_ops.nodes.intake import (
     salvar_heuristica,
 )
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
+from open_agentic_ops.similaridade import buscar_precedentes, registrar_precedente
 from open_agentic_ops.state import (
     BoardState,
     DecisaoFDE,
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
         config = {"configurable": {"thread_id": thread_id}}
         graph.invoke(
             {
+                "thread_id": thread_id,
                 "origem": "sre",
                 "spec": texto,
             },
@@ -94,7 +96,11 @@ def create_app() -> FastAPI:
         )
         return thread_id
 
-    graph = build_graph(criar_demanda=criar_demanda).compile(checkpointer=build_dev_checkpointer())
+    graph = build_graph(
+        criar_demanda=criar_demanda,
+        buscar_precedentes=buscar_precedentes,
+        registrar_precedente=registrar_precedente,
+    ).compile(checkpointer=build_dev_checkpointer())
     view = BoardView(graph.checkpointer)
     resume = make_resume_handler()
 
@@ -156,6 +162,7 @@ def create_app() -> FastAPI:
         config = {"configurable": {"thread_id": thread_id}}
         result = graph.invoke(
             {
+                "thread_id": thread_id,
                 "origem": body.origem,
                 "origem_subtipo": body.origem_subtipo,
                 "prioridade": body.prioridade,

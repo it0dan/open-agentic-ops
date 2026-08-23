@@ -16,6 +16,7 @@ SpecAutor = Literal["intake", "fde"]
 Dominio = Literal["backend", "frontend", "ambos"]
 Status = Literal[
     "triado",
+    "aguardando_autoria",
     "spec_pronta",
     "em_implementacao",
     "em_revisao",

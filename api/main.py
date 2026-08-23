@@ -32,8 +32,9 @@ from open_agentic_ops.state import BoardState, Origem
 
 class ResumeBody(BaseModel):
     thread_id: str
-    aprovado: bool
+    aprovado: bool | None = None
     comentario: str | None = None
+    spec: str | None = None
 
 
 class IntakeBody(BaseModel):
@@ -79,15 +80,31 @@ def create_app() -> FastAPI:
         snap = view.snapshot(body.thread_id)
         if snap is None:
             raise HTTPException(status_code=404, detail="demanda não encontrada")
-        if "hitl" not in graph.get_state(config).next:
+
+        proximos = graph.get_state(config).next
+        if "hitl" in proximos:
+            if body.aprovado is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="decisão HITL requer o campo 'aprovado'",
+                )
+            cmd = resume(
+                body.thread_id,
+                {"aprovado": body.aprovado, "comentario": body.comentario},
+            )
+        elif "autoria_spec" in proximos:
+            if not body.spec or not body.spec.strip():
+                raise HTTPException(
+                    status_code=422,
+                    detail="autoria de spec requer o campo 'spec'",
+                )
+            cmd = resume(body.thread_id, {"spec": body.spec})
+        else:
             raise HTTPException(
                 status_code=400,
-                detail="demanda não está aguardando HITL",
+                detail="demanda não está aguardando HITL nem autoria de spec",
             )
-        cmd = resume(
-            body.thread_id,
-            {"aprovado": body.aprovado, "comentario": body.comentario},
-        )
+
         result = graph.invoke(cmd, config)
         return _detalhe(body.thread_id, result)
 

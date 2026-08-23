@@ -46,7 +46,7 @@ def test_board_vazio(client):
     assert r.json() == []
 
 
-def test_intake_alta_ambiguidade_pausa_no_hitl(client):
+def test_intake_alta_ambiguidade_pausa_na_autoria(client):
     r = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA})
     assert r.status_code == 200
     body = r.json()
@@ -56,6 +56,28 @@ def test_intake_alta_ambiguidade_pausa_no_hitl(client):
     assert body["pii_masked"] is True
     assert "123.456.789-00" not in body["spec"]
     assert "[CPF]" in body["spec"]
+    assert body["status"] == "aguardando_autoria"
+
+
+def test_resume_autoria_spec_libera_fluxo(client):
+    intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
+    tid = intake["thread_id"]
+    r = client.post(
+        "/resume",
+        json={"thread_id": tid, "spec": "Spec autorada pelo FDE."},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["spec"] == "Spec autorada pelo FDE."
+    assert body["spec_autor"] == "fde"
+    assert len(body["worktrees"]) == 2
+
+
+def test_resume_autoria_spec_exige_spec(client):
+    intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
+    tid = intake["thread_id"]
+    r = client.post("/resume", json={"thread_id": tid})
+    assert r.status_code == 422
 
 
 def test_intake_texto_vazio(client):
@@ -84,6 +106,7 @@ def test_board_detalhe_404(client):
 def test_resume_aprova_demanda(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
     r = client.post("/resume", json={"thread_id": tid, "aprovado": True, "comentario": "ok"})
     assert r.status_code == 200
     body = r.json()
@@ -95,6 +118,7 @@ def test_resume_aprova_demanda(client):
 def test_resume_sem_demanda_aguardando(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
     client.post("/resume", json={"thread_id": tid, "aprovado": True})
     r = client.post("/resume", json={"thread_id": tid, "aprovado": True})
     assert r.status_code == 400

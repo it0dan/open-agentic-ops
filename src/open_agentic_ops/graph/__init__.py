@@ -8,6 +8,7 @@ worktrees paralelos. O checkpointer é o board (ADR-0002).
 from __future__ import annotations
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import interrupt
 
 from open_agentic_ops.gates.eval_gate import make_eval_gate
 from open_agentic_ops.gates.hitl_gate import hitl_gate
@@ -27,8 +28,34 @@ def _rascunha_spec(state: BoardState) -> BoardState:
 
 
 def _escala_fde(state: BoardState) -> BoardState:
-    """Alta ambiguidade: pausa para autoria da spec pelo FDE (ADR-0009)."""
-    return {"status": "spec_pronta"}
+    """Alta ambiguidade: escala ao FDE para autoria da spec (ADR-0009).
+
+    Marca o estado como aguardando autoria e delega ao nó `autoria_spec`,
+    que pausa via `interrupt()` até o FDE injetar a spec via `POST /resume`.
+    """
+    return {"status": "aguardando_autoria"}
+
+
+def _autoria_spec(state: BoardState) -> BoardState:
+    """Pausa para o FDE autorar a spec (alta ambiguidade).
+
+    O `interrupt()` retorna o payload do `POST /resume` (ADR-0009), contendo a
+    spec autorada pelo FDE, que re-entra no estado e libera o fluxo para o
+    fan-out dos worktrees.
+    """
+    payload: dict = interrupt(
+        {
+            "tipo": "autoria_spec",
+            "thread": state.get("origem", "desconhecida"),
+            "spec_resumo": (state.get("spec") or "")[:200],
+        }
+    )
+    spec_autorada = payload.get("spec", "")
+    return {
+        "spec": spec_autorada,
+        "spec_autor": "fde",
+        "status": "spec_pronta",
+    }
 
 
 def _fan_out(state: BoardState) -> BoardState:
@@ -62,6 +89,7 @@ def build_graph(
     builder.add_node("intake", intake_node)
     builder.add_node("rascunha_spec", _rascunha_spec)
     builder.add_node("escala_fde", _escala_fde)
+    builder.add_node("autoria_spec", _autoria_spec)
     builder.add_node("fan_out", _fan_out)
     builder.add_node("feature_backend", feature_backend)
     builder.add_node("feature_frontend", feature_frontend)
@@ -80,7 +108,8 @@ def build_graph(
         {"rascunha_spec": "rascunha_spec", "fde": "escala_fde"},
     )
     builder.add_edge("rascunha_spec", "fan_out")
-    builder.add_edge("escala_fde", "fan_out")
+    builder.add_edge("escala_fde", "autoria_spec")
+    builder.add_edge("autoria_spec", "fan_out")
 
     builder.add_edge("fan_out", "feature_backend")
     builder.add_edge("fan_out", "feature_frontend")

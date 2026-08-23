@@ -32,6 +32,15 @@ def test_fluxo_completo_caso_ancora():
     assert result["pii_masked"] is True
     assert "123.456.789-00" not in result["spec"]
     assert "[CPF]" in result["spec"]
+    assert result["status"] == "aguardando_autoria"
+
+    spec_autorada = (
+        "Spec autorada pelo FDE: novo campo de portabilidade de crédito "
+        "consignado no Manual de Escopo, conforme a Instrução Normativa do BCB."
+    )
+    result = app.invoke(Command(resume={"spec": spec_autorada}), config)
+    assert result["spec"] == spec_autorada
+    assert result["spec_autor"] == "fde"
 
     branches = {w["branch"] for w in result["worktrees"]}
     assert branches == {"feat/backend", "feat/frontend"}

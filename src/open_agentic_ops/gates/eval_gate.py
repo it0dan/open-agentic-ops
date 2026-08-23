@@ -27,7 +27,7 @@ def make_eval_gate(
         resultado = evaluate(state.get("spec", ""))
         return {
             "resultado_eval": resultado,
-            "status": "em_eval" if resultado["aprovado"] else "em_revisao",
+            "status": "em_eval" if resultado["aprovado"] else "aguardando_hitl",
         }
 
     return eval_gate

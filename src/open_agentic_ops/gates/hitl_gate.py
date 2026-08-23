@@ -26,10 +26,10 @@ def hitl_gate(state: BoardState) -> BoardState:
         }
     )
 
-    aprovado = bool(decisao.get("aprovado"))
+    rejeitado = decisao.get("decisao") == "rejeitado"
     return {
         "decisao_hitl": decisao,
-        "status": "aprovado" if aprovado else "aguardando_hitl",
+        "status": "rejeitado" if rejeitado else "aprovado",
     }
 
 

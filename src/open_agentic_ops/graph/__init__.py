@@ -7,6 +7,9 @@ worktrees paralelos. O checkpointer é o board (ADR-0002).
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable
+
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
@@ -15,11 +18,11 @@ from open_agentic_ops.gates.hitl_gate import hitl_gate
 from open_agentic_ops.nodes.architecture_node import make_architecture_node
 from open_agentic_ops.nodes.feature_node import make_feature_node
 from open_agentic_ops.nodes.intake_node import intake_node, route_by_ambiguity
-from open_agentic_ops.nodes.platform_node import make_platform_node
+from open_agentic_ops.nodes.platform_node import _NoopTools, make_platform_node
 from open_agentic_ops.nodes.review_node import make_review_node
 from open_agentic_ops.nodes.sre_node import make_sre_node
 from open_agentic_ops.ports import LLMProviderPort, ToolExecutionPort
-from open_agentic_ops.state import BoardState
+from open_agentic_ops.state import BoardState, ResultadoEval
 
 
 def _rascunha_spec(state: BoardState) -> BoardState:
@@ -78,12 +81,53 @@ def _marcar_hitl(state: BoardState) -> BoardState:
     return {"status": "aguardando_hitl"}
 
 
+def route_by_hitl_decision(state: BoardState) -> str:
+    """Aresta condicional do HITL (ADR-0017).
+
+    `rejeitado` é status terminal — o grafo termina. Qualquer outra decisão
+    (aprovado, aprovado com ressalvas) segue ao Eval.
+    """
+    decisao = (state.get("decisao_hitl") or {}).get("decisao")
+    if decisao == "rejeitado":
+        return "rejeitado"
+    return "aprovado"
+
+
+def route_by_eval_result(state: BoardState) -> str:
+    """Aresta condicional do Eval (ADR-0017).
+
+    Reprovado volta ao HITL (julgamento humano); aprovado segue ao deploy.
+    """
+    aprovado = (state.get("resultado_eval") or {}).get("aprovado", True)
+    return "aprovado" if aprovado else "reprovado"
+
+
+def make_deploy_node(
+    tools: ToolExecutionPort | None = None,
+) -> Callable[[BoardState], BoardState]:
+    """Nó de deploy (ADR-0017): Platform Agent, chama tool `deploy` (stub)."""
+    executor: ToolExecutionPort = tools or _NoopTools()
+
+    def deploy_node(state: BoardState) -> BoardState:
+        asyncio.run(
+            executor.call_tool(
+                "deploy", {"branches": [wt["branch"] for wt in state.get("worktrees", [])]}
+            )
+        )
+        return {"status": "deployado"}
+
+    return deploy_node
+
+
 def build_graph(
     *,
     llm: LLMProviderPort | None = None,
     tools: ToolExecutionPort | None = None,
     skill_dir: str | None = None,
     architecture_enabled: bool = True,
+    eval_runner: Callable[[str], ResultadoEval] | None = None,
+    criar_demanda: Callable[[str], str] | None = None,
+    monitorar: Callable[[], dict] | None = None,
 ) -> StateGraph:
     """Monta o grafo da squad com os nós e arestas condicionais."""
     feature_backend = make_feature_node("backend", llm=llm, tools=tools, skill_dir=skill_dir)
@@ -91,8 +135,9 @@ def build_graph(
     platform = make_platform_node(tools=tools)
     architecture = make_architecture_node()
     review = make_review_node()
-    eval_gate = make_eval_gate()
-    sre = make_sre_node()
+    eval_gate = make_eval_gate(runner=eval_runner)
+    sre = make_sre_node(monitorar=monitorar, criar_demanda=criar_demanda)
+    deploy = make_deploy_node(tools=tools)
 
     builder = StateGraph(BoardState)
 
@@ -110,6 +155,7 @@ def build_graph(
     builder.add_node("marcar_hitl", _marcar_hitl)
     builder.add_node("hitl", hitl_gate)
     builder.add_node("eval", eval_gate)
+    builder.add_node("deploy", deploy)
     builder.add_node("sre", sre)
 
     builder.add_edge(START, "intake")
@@ -136,8 +182,17 @@ def build_graph(
 
     builder.add_edge("review", "marcar_hitl")
     builder.add_edge("marcar_hitl", "hitl")
-    builder.add_edge("hitl", "eval")
-    builder.add_edge("eval", "sre")
+    builder.add_conditional_edges(
+        "hitl",
+        route_by_hitl_decision,
+        {"aprovado": "eval", "rejeitado": END},
+    )
+    builder.add_conditional_edges(
+        "eval",
+        route_by_eval_result,
+        {"aprovado": "deploy", "reprovado": "hitl"},
+    )
+    builder.add_edge("deploy", "sre")
     builder.add_edge("sre", END)
 
     return builder

@@ -36,6 +36,7 @@ Status = Literal[
     "em_eval",
     "deployado",
     "monitorado",
+    "rejeitado",
 ]
 
 
@@ -60,14 +61,24 @@ class Adr(TypedDict):
     conteudo: str
 
 
+DecisaoFDE = Literal["aprovado", "aprovado_com_ressalvas", "rejeitado"]
+
+
 class DecisaoHitl(TypedDict):
-    aprovado: bool
-    comentario: str | None
+    decisao: DecisaoFDE
+    observacao: str | None
 
 
 class ResultadoEval(TypedDict):
     aprovado: bool
     detalhes: str | None
+
+
+class ResultadoMonitoramento(TypedDict):
+    task_gerada: bool
+    motivo: str
+    descricao_task: str | None
+    metricas_brutas: dict
 
 
 class ClassificacaoIntake(TypedDict):
@@ -93,5 +104,5 @@ class BoardState(TypedDict, total=False):
     pii_masked: bool
     decisao_hitl: DecisaoHitl
     resultado_eval: ResultadoEval
-    sre_task_gerada: bool
+    resultado_monitoramento: ResultadoMonitoramento
     classificacao_intake: ClassificacaoIntake

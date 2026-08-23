@@ -28,13 +28,19 @@ from open_agentic_ops.nodes.intake import (
     salvar_heuristica,
 )
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
-from open_agentic_ops.state import BoardState, Origem, OrigemSubtipo, Prioridade
+from open_agentic_ops.state import (
+    BoardState,
+    DecisaoFDE,
+    Origem,
+    OrigemSubtipo,
+    Prioridade,
+)
 
 
 class ResumeBody(BaseModel):
     thread_id: str
-    aprovado: bool | None = None
-    comentario: str | None = None
+    decisao: DecisaoFDE | None = None
+    observacao: str | None = None
     spec: str | None = None
 
 
@@ -64,7 +70,24 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    graph = build_graph().compile(checkpointer=build_dev_checkpointer())
+    def criar_demanda(texto: str) -> str:
+        """Port do SRE (ADR-0019): realimenta o Intake com origem='sre'.
+
+        Gera um novo thread_id e invoca o grafo compilado com `origem="sre"`,
+        no mesmo caminho usado por `POST /intake`.
+        """
+        thread_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
+        graph.invoke(
+            {
+                "origem": "sre",
+                "spec": texto,
+            },
+            config,
+        )
+        return thread_id
+
+    graph = build_graph(criar_demanda=criar_demanda).compile(checkpointer=build_dev_checkpointer())
     view = BoardView(graph.checkpointer)
     resume = make_resume_handler()
 
@@ -95,14 +118,14 @@ def create_app() -> FastAPI:
 
         proximos = graph.get_state(config).next
         if "hitl" in proximos:
-            if body.aprovado is None:
+            if body.decisao is None:
                 raise HTTPException(
                     status_code=422,
-                    detail="decisão HITL requer o campo 'aprovado'",
+                    detail="decisão HITL requer o campo 'decisao'",
                 )
             cmd = resume(
                 body.thread_id,
-                {"aprovado": body.aprovado, "comentario": body.comentario},
+                {"decisao": body.decisao, "observacao": body.observacao},
             )
         elif "autoria_spec" in proximos:
             if not body.spec or not body.spec.strip():
@@ -173,6 +196,7 @@ _FLUXO_STATUS = [
     "em_eval",
     "deployado",
     "monitorado",
+    "rejeitado",
 ]
 
 _AGENTE_POR_STATUS = {
@@ -186,6 +210,7 @@ _AGENTE_POR_STATUS = {
     "em_eval": "Eval Gate",
     "deployado": "Platform Agent",
     "monitorado": "SRE Agent",
+    "rejeitado": "FDE",
 }
 
 
@@ -236,6 +261,7 @@ def _detalhe(thread_id: str, snap: BoardState) -> dict:
         "feedback_review": snap.get("feedback_review", []),
         "decisao_hitl": snap.get("decisao_hitl"),
         "resultado_eval": snap.get("resultado_eval"),
+        "resultado_monitoramento": snap.get("resultado_monitoramento"),
         "classificacao_intake": snap.get("classificacao_intake"),
         "pii_masked": snap.get("pii_masked"),
     }

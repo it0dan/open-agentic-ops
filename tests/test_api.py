@@ -144,11 +144,47 @@ def test_resume_aprova_demanda(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
     client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
-    r = client.post("/resume", json={"thread_id": tid, "aprovado": True, "comentario": "ok"})
+    r = client.post(
+        "/resume",
+        json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"},
+    )
     assert r.status_code == 200
     body = r.json()
-    assert body["decisao_hitl"]["aprovado"] is True
+    assert body["decisao_hitl"]["decisao"] == "aprovado"
     assert body["resultado_eval"]["aprovado"] is True
+    assert body["status"] == "monitorado"
+
+
+def test_resume_rejeita_demanda(client):
+    intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
+    tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
+    r = client.post(
+        "/resume",
+        json={"thread_id": tid, "decisao": "rejeitado", "observacao": "direção errada"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["decisao_hitl"]["decisao"] == "rejeitado"
+    assert body["status"] == "rejeitado"
+
+
+def test_resume_aprova_com_ressalvas(client):
+    intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
+    tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
+    r = client.post(
+        "/resume",
+        json={
+            "thread_id": tid,
+            "decisao": "aprovado_com_ressalvas",
+            "observacao": "revisar cobertura de testes",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["decisao_hitl"]["decisao"] == "aprovado_com_ressalvas"
+    assert body["decisao_hitl"]["observacao"] == "revisar cobertura de testes"
     assert body["status"] == "monitorado"
 
 
@@ -156,13 +192,13 @@ def test_resume_sem_demanda_aguardando(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
     client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
-    client.post("/resume", json={"thread_id": tid, "aprovado": True})
-    r = client.post("/resume", json={"thread_id": tid, "aprovado": True})
+    client.post("/resume", json={"thread_id": tid, "decisao": "aprovado"})
+    r = client.post("/resume", json={"thread_id": tid, "decisao": "aprovado"})
     assert r.status_code == 400
 
 
 def test_resume_demanda_inexistente(client):
-    r = client.post("/resume", json={"thread_id": "nao-existe", "aprovado": True})
+    r = client.post("/resume", json={"thread_id": "nao-existe", "decisao": "aprovado"})
     assert r.status_code == 404
 
 

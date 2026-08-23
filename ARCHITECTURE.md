@@ -106,7 +106,7 @@ O FDE conecta-se ao grafo via `POST /resume` em dois momentos:
 Duas camadas no mesmo repositório (ADR-0014) dão ao FDE uma interface de operação da squad:
 
 - **API FastAPI** (`api/`): expõe o grafo via HTTP. Endpoints: `GET /tasks` (lista), `GET /tasks/{thread_id}` (detalhe, 404 se inexistente), `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica` (correção prospectiva). Consome apenas o estado já mascarado na fronteira (Intake) — nunca expõe PII raw (RNF-1).
-- **Console web** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Demandas (`/tasks`), Detalhe, Graph (`/graph`), Intake, Audit (`/audit`). Rotas legadas `/loops` e `/auditoria` redirecionam (307) para `/graph` e `/audit`. Consome a API via cliente HTTP (`lib/api.ts`), com fallback para dados mock.
+- **Console web** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Registry (`/registry`), Detalhe, Graph (`/graph`), Intake, Audit (`/audit`). Rotas legadas `/loops`, `/auditoria`, `/tasks` e `/board` redirecionam (307) para `/graph`, `/audit` e `/registry`. Consome a API via cliente HTTP (`lib/api.ts`), com fallback para dados mock.
 
 ```
 [FDE (humano)]

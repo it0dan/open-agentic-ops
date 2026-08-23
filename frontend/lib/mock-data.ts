@@ -4,6 +4,7 @@ export type SpecAutor = "intake" | "fde";
 export type Dominio = "backend" | "frontend" | "ambos";
 export type Status =
   | "triado"
+  | "aguardando_autoria"
   | "spec_pronta"
   | "em_implementacao"
   | "em_revisao"
@@ -1183,6 +1184,7 @@ export const DOMINIO_LABEL: Record<Dominio, string> = {
 
 export const STATUS_LABEL: Record<Status, string> = {
   triado: "Triado",
+  aguardando_autoria: "Aguardando autoria",
   spec_pronta: "Spec pronta",
   em_implementacao: "Em implementação",
   em_revisao: "Em revisão",

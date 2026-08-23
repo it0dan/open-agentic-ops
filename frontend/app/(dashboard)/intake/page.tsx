@@ -106,7 +106,9 @@ export default function IntakePage() {
           <CardHeader>
             <CardTitle>Nova demanda</CardTitle>
             <CardDescription>
-              O texto será mascarado na fronteira pelo Intake (PII).
+              A demanda segue o fluxo da squad: implementação → revisão → HITL
+              (você revisa o resultado) → eval → deploy. O texto é mascarado na
+              fronteira pelo Intake (PII).
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>

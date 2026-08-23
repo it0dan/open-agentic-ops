@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 const STATUS_STYLE: Record<Status, string> = {
   triado: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  aguardando_autoria: "bg-[#ac54eb]/10 text-[#ac54eb] border-[#ac54eb]/25 animate-pulse",
   spec_pronta: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
   em_implementacao: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   em_revisao: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",

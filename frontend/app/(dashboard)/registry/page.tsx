@@ -8,6 +8,7 @@ import {
   Clock,
   Columns3,
   Inbox,
+  Info,
   Layers,
   List,
   Loader2,
@@ -44,6 +45,7 @@ const FILTER_GROUPS: FilterGroup[] = [
     key: "status",
     label: "Status",
     options: [
+      { value: "aguardando_autoria", label: "Aguardando autoria" },
       { value: "aguardando_hitl", label: "HITL" },
       { value: "em_implementacao", label: "Implementação" },
       { value: "em_revisao", label: "Revisão" },
@@ -61,7 +63,7 @@ const FILTER_GROUPS: FilterGroup[] = [
 ];
 
 export default function RegistryPage() {
-  const { demandas, carregando } = useDemandasPolling();
+  const { demandas, carregando, usandoMock } = useDemandasPolling();
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<
     Record<string, Set<string>>
@@ -144,14 +146,17 @@ export default function RegistryPage() {
       <PageHeader
         title="Registry"
         description="Demandas da squad Open Agentic Ops"
-        actions={
-          <Button asChild className="rounded-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
-            <Link href="/intake">
-              <Inbox className="mr-2 size-4" /> Nova demanda
-            </Link>
-          </Button>
-        }
       />
+
+      {usandoMock && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <Info className="size-4 shrink-0" />
+          <span>
+            Modo demo — exibindo dados sintéticos (API indisponível). As
+            demandas reais aparecem quando a API estiver no ar.
+          </span>
+        </div>
+      )}
 
       {/* KPIs — atalhos de filtro */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

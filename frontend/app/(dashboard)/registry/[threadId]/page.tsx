@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { POLL_INTERVAL } from "@/hooks/use-demandas-polling";
 import { aprovarDemanda, obterDemanda } from "@/lib/api";
@@ -42,6 +43,7 @@ import {
 
 const FLUXO: Status[] = [
   "triado",
+  "aguardando_autoria",
   "spec_pronta",
   "em_implementacao",
   "em_revisao",
@@ -81,6 +83,7 @@ export default function DetalhePage() {
     [params.threadId],
   );
   const [demanda, setDemanda] = useState<Demanda | undefined>(mock);
+  const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -89,9 +92,15 @@ export default function DetalhePage() {
     async function buscar() {
       try {
         const data = await obterDemanda(params.threadId);
-        if (ativo) setDemanda(data);
+        if (ativo) {
+          setDemanda(data);
+          setCarregando(false);
+        }
       } catch {
-        if (ativo) setDemanda(mock);
+        if (ativo) {
+          setDemanda(mock);
+          setCarregando(false);
+        }
       }
     }
     buscar();
@@ -101,6 +110,16 @@ export default function DetalhePage() {
       clearInterval(id);
     };
   }, [params.threadId, mock]);
+
+  if (carregando) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
 
   if (!demanda) {
     notFound();
@@ -207,8 +226,9 @@ export default function DetalhePage() {
               Decisão do FDE (HITL)
             </CardTitle>
             <CardDescription>
-              Aprovar libera o merge e segue para eval/deploy. Rejeitar marca a
-              demanda como não aprovada.
+              Revise o resultado da implementação (worktrees, ADRs, feedbacks)
+              antes do merge. Aprovar libera para eval/deploy; rejeitar devolve
+              para revisão.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">

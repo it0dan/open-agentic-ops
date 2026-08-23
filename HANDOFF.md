@@ -10,7 +10,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Evolução do console (sessões recentes) — concluída e validada:**
 - **Login simétrico + guard na raiz:** login centralizado simetricamente, redirect pós-login para `/dashboard`; rota raiz `/` com guard client (`components/home-redirect.tsx`) → `/dashboard` ou `/login`.
-- **Board → Demandas → Tasks:** rota `/board` renomeada para `/demandas` e depois para `/tasks` (pasta movida), com **redirects de compatibilidade** em `app/(dashboard)/board/` (307 → `/tasks` e `/tasks/[id]`). Sidebar atualizada ("Demandas" + novo item "Loops").
+- **Board → Demandas → Tasks → Registry:** rota `/board` renomeada para `/demandas`, depois `/tasks` e finalmente `/registry` (pastas movidas), com **redirects de compatibilidade** em `app/(dashboard)/board/` e `app/(dashboard)/tasks/` (307 → `/registry` e `/registry/[id]`). Sidebar atualizada ("Registry" + novo item "Loops").
 - **Página `/loops` dedicada:** grafo React Flow full-viewport (sem modal), toolbar fixa, `components/content-container.tsx` remove o `max-w-7xl` na rota `/loops`.
 - **Filtros por facet (dropdowns):** `components/filter-bar.tsx` reescrito — 3 botões de facet (Origem/Status/Domínio) com `Popover` + `Checkbox`, contador no label, acento de cor quando ativo, botão "Limpar (n)".
 - **Kanban read-only:** `components/kanban-board.tsx` — **removido todo o DnD** (`@dnd-kit`), cards são `Link` → detalhe, 9 colunas do `FLUXO` com **colunas vazias auto-colapsáveis** (faixa fina ~48px com label vertical, clique expande temporariamente). Toggle Lista/Kanban persistido em `localStorage` (`fde-visao-demandas`).
@@ -20,11 +20,13 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **`/loops` interativo:** toggle Vertical removido (sempre horizontal); **nós arrastáveis** com persistência em `localStorage` (`fde-loop-node-positions`) + botão "Resetar layout"; arestas fixas pela ordem lógica; **CSS vars do React Flow** (`--xy-*`) sobrescritas para tema claro/dark; **drawer do agente completo** (histórico de eventos cronológico, duração + início, link para demanda). `LoopStage` estendido com `eventos`/`inicio`; `lib/loop-stages.ts` populado com eventos mock por etapa. Fix do build: `useReactFlow()` exige `ReactFlowProvider` → separado `LoopCanvasInner` (hook) do wrapper exportado `LoopCanvas` (provider).
 - **Mock populado:** `lib/mock-data.ts` agora tem **23 demandas** (3 originais + 20 novas), cobrindo todos os status do `FLUXO`, origens (cliente/regulatorio/estrategia/sre), domínios (backend/frontend/ambos) e ambiguidades.
 
-**Validação (estado atual):** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **15/15 passed**; smoke test das rotas (`/login`, `/dashboard`, `/tasks`, `/graph`, `/audit`, detalhe → 200; `/board`, `/loops`, `/auditoria` → 307 redirect).
+**Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry** (rota `/registry`, redirects 307 de `/tasks` e `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`RegistryPage`, `ColumnRegistry`). 5 commits pusheados para `origin/main`.
+
+**Validação (estado atual):** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **15/15 passed**; smoke test das rotas (`/login`, `/dashboard`, `/registry`, `/graph`, `/audit`, detalhe → 200; `/board`, `/tasks`, `/loops`, `/auditoria` → 307 redirect).
 
 ## Trabalho desta sessão (encerramento)
 
-**1. Smoke test E2E completo do console** — subiu API (porta 8000) e frontend (porta 3000) e validou ponta a ponta: `GET /tasks` (lista/detalhe/404), `POST /intake` (cria demanda + valida texto vazio → 422), `GET /auditoria`, `POST /auditoria/heuristica` (add/remove), `POST /resume` (aprova/rejeita HITL), todas as rotas do frontend (200) e redirects `/board` → `/tasks` (307). Tudo verde.
+**1. Smoke test E2E completo do console** — subiu API (porta 8000) e frontend (porta 3000) e validou ponta a ponta: `GET /tasks` (lista/detalhe/404), `POST /intake` (cria demanda + valida texto vazio → 422), `GET /auditoria`, `POST /auditoria/heuristica` (add/remove), `POST /resume` (aprova/rejeita HITL), todas as rotas do frontend (200) e redirects `/board` e `/tasks` → `/registry` (307). Tudo verde.
 
 **2. Renomeação do recurso REST `/demandas` → `/tasks`** (boas práticas REST):
 - API: `GET /demandas` → `GET /tasks`; `GET /demandas/{thread_id}` → `GET /tasks/{thread_id}` (`api/main.py`).
@@ -42,6 +44,31 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - README (seção "Console do FDE", execução local, estado), ARCHITECTURE (seção do console + containers), HANDOFF, ADR-0014 (endpoints `/tasks`), `openspec/project.md` (next feature `fde-console`, out of scope, tech stack), artefatos do change `fde-console` (proposal/design/spec/tasks refletem `/tasks`).
 
 **5. Serviços no ar ao final da sessão:** API FastAPI em `http://127.0.0.1:8000` e console Next.js em `http://localhost:3000` (ambos com o código atualizado).
+
+## Trabalho desta sessão (refactor + docs)
+
+**1. Extração do hook compartilhado de polling** — commit `fc92915` (`refactor(console)`):
+- Novo `frontend/hooks/use-demandas-polling.ts` com `useDemandasPolling()` retornando `{ demandas, usandoMock, carregando }` e exportando `POLL_INTERVAL = 4000` (definição única).
+- Removeu a lógica duplicada (fetch + fallback `demandasMock` + `simularTick`) de `dashboard`, `graph` e `tasks` (~150 linhas eliminadas).
+- `tasks/[threadId]` (polling de demanda única) reutiliza `POLL_INTERVAL` importado do hook.
+
+**2. Decisão pendente sobre topologia do Graph** — commit `fbeb664` (`docs`):
+- Criado `docs/sdd/feature-intakes/graph-topologia-real.md` registrando o gap entre o `/graph` linear e a arquitetura real (fan-out/fan-in dos worktrees + aresta SRE→Intake, ADR-0010) como decisão pendente, não bug.
+- Nota adicionada em "Próximos passos" (item 4).
+
+**3. Rename Board → Registry** — commit `a7ad887` (`refactor(console)`):
+- Rota `/tasks` → `/registry` (página, `[threadId]`, testes) via `git mv`.
+- `/tasks` e `/board` viram stubs de redirect 307 → `/registry` e `/registry/[id]`.
+- Sidebar (`/registry`, label "Registry"), links internos, título da página e nota de desambiguação no `CONTEXT.md` atualizados.
+
+**4. Docs refletindo `/registry`** — commit `eb1a093` (`docs`):
+- `README.md` e `ARCHITECTURE.md` atualizados (tela Registry `/registry`, rotas legadas `/loops`, `/auditoria`, `/tasks`, `/board` → 307). Endpoints da API (`GET /tasks`) mantidos intactos.
+
+**5. Fix do login + naming interno** — commit `9ff0c83` (`fix(console)`):
+- Bullet de marketing do login: "Board unificado de demandas" → "Registry unificado de demandas" (texto visível ao usuário).
+- Naming interno: `BoardPage` → `RegistryPage`; `ColumnBoard` → `ColumnRegistry` (arquivo `column-registry.tsx`); teste atualizado.
+
+**Validação:** `npm run lint` limpo; `npm run build` OK (rotas `/registry` reais, `/tasks`/`/board` como redirects); `npm test` → **15/15 passed**. Working tree limpo, tudo commitado e pusheado para `origin/main`.
 
 ## Decisões fechadas
 
@@ -104,7 +131,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **R6:** Redesign é **visual/UX** — lógica de dados (API, mock, estados) permanece intacta.
 
 ### Evolução do console (sessões recentes)
-- **E1:** **Board → Demandas → Tasks** — rota `/tasks` (redirects de compatibilidade de `/board` e `/demandas`), sidebar e títulos renomeados.
+- **E1:** **Board → Demandas → Tasks → Registry** — rota `/registry` (redirects de compatibilidade de `/board`, `/demandas` e `/tasks`), sidebar e títulos renomeados.
 - **E2:** **`/loops` página dedicada** full-viewport (sem modal), toolbar fixa, grafo ocupa o restante da viewport.
 - **E3:** **Filtros por facet** — 3 dropdowns (Origem/Status/Domínio) com popover+checkbox, nunca pills expostas.
 - **E4:** **Kanban read-only** — sem DnD (FDE intervém só via gate HITL); cards clicáveis → detalhe; colunas vazias auto-colapsáveis; toggle Lista/Kanban em `localStorage`.
@@ -132,6 +159,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `PROJECT.md` | Contexto do projeto (raiz) |
 | `docs/sdd/feature-start-playbook.md` | Playbook de início de feature (portado/adaptado) |
 | `docs/sdd/feature-intake-template.md` | Template de Feature Intake Brief (portado/adaptado) |
+| `docs/sdd/feature-intakes/graph-topologia-real.md` | Intake registrando a decisão pendente sobre a topologia real do Graph (fan-out/fan-in + SRE→Intake) |
 | `.opencode/commands/opsx-*.md` | Comandos `/opsx:*` (explore, propose, apply, archive) |
 | `.opencode/skills/openspec-*/` | Skills OpenSpec (explore, propose, apply-change, archive-change) |
 | `src/open_agentic_ops/` | Código Python da squad (ports, state, persistence, pii, nodes, gates, graph, observability) |
@@ -145,20 +173,22 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `frontend/app/login/page.tsx` | Login split-screen simétrico, redirect → `/dashboard` |
 | `frontend/app/(dashboard)/layout.tsx` | Layout do dashboard (sidebar + topbar) usando `ContentContainer` |
 | `frontend/components/content-container.tsx` | Container que remove `max-w-7xl` na rota `/graph` (full-viewport) |
-| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Demandas/Graph/Intake/Audit |
-| `frontend/app/(dashboard)/tasks/page.tsx` | Tela de Demandas (ex-Board): KPIs, filtros por facet, toggle Lista/Colunas, cards |
-| `frontend/app/(dashboard)/tasks/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **metadados sticky** |
-| `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/tasks`) |
+| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Registry/Graph/Intake/Audit |
+| `frontend/app/(dashboard)/registry/page.tsx` | Tela de Registry (ex-Board/Tasks): KPIs, filtros por facet, toggle Lista/Colunas, cards |
+| `frontend/app/(dashboard)/registry/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **metadados sticky** |
+| `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/registry`) |
+| `frontend/app/(dashboard)/tasks/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/registry`) |
 | `frontend/app/(dashboard)/graph/page.tsx` | Página `/graph` full-viewport com `LoopCanvas` |
 | `frontend/app/(dashboard)/loops/page.tsx` | **Redirect de compatibilidade** (307 → `/graph`) |
 | `frontend/app/(dashboard)/auditoria/page.tsx` | **Redirect de compatibilidade** (307 → `/audit`) |
 | `frontend/components/filter-bar.tsx` | Filtros por facet (3 dropdowns popover+checkbox) |
-| `frontend/components/column-board.tsx` | Colunas read-only (ex-Kanban), 9 colunas auto-colapsáveis, cards clicáveis |
+| `frontend/components/column-registry.tsx` | Colunas read-only (ex-Kanban), 9 colunas auto-colapsáveis, cards clicáveis |
 | `frontend/components/loop-canvas.tsx` | Grafo React Flow interativo (nós arrastáveis, reset, drawer do agente, HITL gate) |
 | `frontend/components/loop-status.tsx` | Card do Loop clicável → `/graph`; define `LoopStage` (com `eventos`/`inicio`) |
 | `frontend/lib/loop-stages.ts` | `montarStages` (extraído) com eventos mock por etapa |
 | `frontend/lib/mock-data.ts` | **23 demandas** mock (3 originais + 20 novas) |
 | `frontend/lib/api.ts` | Cliente HTTP do frontend para a API FastAPI |
+| `frontend/hooks/use-demandas-polling.ts` | Hook compartilhado de polling de demandas (`useDemandasPolling`, `POLL_INTERVAL` único) |
 | `frontend/components/ui/` | Componentes base shadcn (inclui popover, checkbox, sheet, dialog, progress, etc.) |
 | `.opencode/skills/frontend-sensedia/SKILL.md` | Skill de frontend (Guia): brand book Sensedia + padrão shadcn/ui |
 | `docs/adr/0014-api-layer-and-fde-console.md` | ADR da camada de API + console (radius, dark-first, glassmorphism) |
@@ -193,9 +223,9 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Frontend (Next.js) — completo e verde:**
 - **Rotas movidas** (git mv): `loops/` → `graph/`, `auditoria/` → `audit/`; redirects de compatibilidade criados (`/loops`→`/graph`, `/auditoria`→`/audit`).
-- **Sidebar** (`components/app-sidebar.tsx`): Dashboard, Board (`/tasks`), Graph (`/graph`), Intake, Audit (`/audit`).
+- **Sidebar** (`components/app-sidebar.tsx`): Dashboard, Registry (`/registry`), Graph (`/graph`), Intake, Audit (`/audit`).
 - **Loop→Graph na hierarquia**: `loop-status.tsx` ("Squad Graph", "Ver graph completo"), `dashboard/page.tsx` (`/graph`), detalhe da demanda ("Execution loop"), `content-container.tsx` (fullWidth `/graph`).
-- **Kanban removido da UI**: `kanban-board.tsx` → `column-board.tsx` (`ColumnBoard`/`ColumnCard`); `tasks/page.tsx` toggle "Lista/Colunas" com ícone `Columns3`.
+- **Kanban removido da UI**: `kanban-board.tsx` → `column-registry.tsx` (`ColumnRegistry`/`ColumnCard`); `registry/page.tsx` toggle "Lista/Colunas" com ícone `Columns3`.
 - **HITL gate no Graph**: `loop-canvas.tsx` — drawer do nó `hitl` mostra Aprovar/Rejeitar (via `aprovarDemanda`); nó `eval` mostra resultado; `LoopStage` estendido com `thread_id`/`resultado_eval`; `lib/loop-stages.ts` popula esses campos.
 - **Intake autoria de spec**: `intake/page.tsx` — seção "Autoria de spec (alta ambiguidade)" listando itens aguardando spec do FDE, com textarea + botão "Liberar para o grafo" chamando `autorarSpec` (POST /resume). `lib/api.ts` estendido (`ResumePayload.spec` + `autorarSpec`).
 - **Auditoria como calibração**: `audit/page.tsx` reescrito — métricas "% que o FDE manteria" / concordâncias / discordâncias (localStorage), tabela com botões "Manteria"/"Discordo", mantendo correção prospectiva da heurística (RNF-6).
@@ -203,7 +233,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 **Testes frontend — resolvidos e ampliados:**
 - **Bloqueio do teste de autoria do Intake resolvido** (`intake/page.test.tsx`): a causa raiz era o estado inicial `demandasMock` (com **2 itens** de alta ambiguidade + `spec_autor: "fde"`) renderizando 2 textareas antes do `useEffect` trocar para o mock da API (`[DEMANDA_ALTA]` = 1). Fix: o teste agora usa `waitFor` para aguardar o efeito resolver e conferir exatamente 1 textarea. Também tipado `DEMANDA_ALTA` como `Demanda` (corrige erro TS no build).
 - **`audit/page.test.tsx`** — já atualizado para o novo layout de calibração ("Manteria"/"Discordo"); passa.
-- **`tasks/page.test.tsx`** — adicionado teste do toggle "Colunas" (clica no botão e verifica que o `ColumnBoard` renderiza a coluna "Triado").
+- **`registry/page.test.tsx`** — adicionado teste do toggle "Colunas" (clica no botão e verifica que o `ColumnRegistry` renderiza a coluna "Triado").
 - **Lint limpo**: removido prop `demandas` não utilizado de `loop-canvas.tsx` (e do caller `graph/page.tsx` + import órfão `type { Demanda }`).
 
 **Validação final:** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo; `npm run lint` → limpo; `npm run build` → OK; `npm test` → **15/15 passed**.
@@ -218,7 +248,7 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: tarefa de nomenclatura/jornada do FDE CONCLUÍDA — backend e frontend prontos, testes/lint/build verdes (30 pytest + 15 vitest), docs atualizadas, change arquivado, tudo commitado e pusheado.**
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Registry, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: refactor de polling (hook `useDemandasPolling`) + rename Board→Registry + docs — CONCLUÍDO, testes/lint/build verdes (30 pytest + 15 vitest), tudo commitado e pusheado.**
 
 1. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
 2. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.

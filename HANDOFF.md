@@ -4,13 +4,23 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 ## Estado atual
 
-**Implementação do grafo LangGraph concluída** (change `squad-open-agentic-ops`, 24/24 tasks). O repo agora contém, além da fundação documental (arquitetura, ADRs, glossário, pipeline SDD/SPDD), o **código Python funcional** da squad: scaffold Poetry, portas hexagonais, modelo de estado, persistência (checkpointer = board), redação PII, todos os nós e gates, montagem do grafo, observabilidade e testes.
+**Grafo LangGraph implementado e versionado** (change `squad-open-agentic-ops`, 24/24 tasks, arquivado em `openspec/archive/2026-08-22-squad-open-agentic-ops/`). O repo contém a fundação documental (arquitetura, ADRs, glossário, pipeline SDD/SPDD) e o **código Python funcional** da squad: scaffold Poetry, portas hexagonais, modelo de estado, persistência (checkpointer = board), redação PII, nós e gates, montagem do grafo, observabilidade e testes. **Commitado e pusheado** para `origin/main` (commit `1f2ec8d`).
 
-**Validação:** `poetry run pytest` → 10 passed; `poetry run ruff check .` → limpo; `poetry run ruff format --check .` → 24 arquivos formatados. Fluxo ponta a ponta do caso-âncora validado (Intake → fan-out 2 worktrees → Architecture/Review → HITL gate com `Command(resume=...)` → Eval → SRE monitora).
+**Change `fde-console` (console do FDE):** proposta, design, spec e tasks criados (37 tasks). **Grupos 1–7 concluídos (37/37):** runtime (heurística mutável, `classificacao_intake`, BoardView), API FastAPI (`api/main.py`), console Next.js, telas, integração console↔API, skill `frontend-sensedia` e testes/validação (incluindo ADR-0014). **Redesign visual completo (dark-first + glassmorphism) concluído.**
 
-**Playbook de desenvolvimento agêntico portado** do `solutions-business-case-agent` (bitbucket): Feature Start Playbook (SDD/SPDD + OpenSpec + OpenCode), template de intake, comandos `/opsx:*` e skills OpenSpec. O `openspec/` foi migrado para o layout canônico (reconhecido pelo CLI `openspec` v1.3.1).
+**Evolução do console (sessões recentes) — concluída e validada:**
+- **Login simétrico + guard na raiz:** login centralizado simetricamente, redirect pós-login para `/dashboard`; rota raiz `/` com guard client (`components/home-redirect.tsx`) → `/dashboard` ou `/login`.
+- **Board → Demandas:** rota `/board` renomeada para `/demandas` (pasta movida), com **redirects de compatibilidade** em `app/(dashboard)/board/` (307 → `/demandas` e `/demandas/[id]`). Sidebar atualizada ("Demandas" + novo item "Loops").
+- **Página `/loops` dedicada:** grafo React Flow full-viewport (sem modal), toolbar fixa, `components/content-container.tsx` remove o `max-w-7xl` na rota `/loops`.
+- **Filtros por facet (dropdowns):** `components/filter-bar.tsx` reescrito — 3 botões de facet (Origem/Status/Domínio) com `Popover` + `Checkbox`, contador no label, acento de cor quando ativo, botão "Limpar (n)".
+- **Kanban read-only:** `components/kanban-board.tsx` — **removido todo o DnD** (`@dnd-kit`), cards são `Link` → detalhe, 9 colunas do `FLUXO` com **colunas vazias auto-colapsáveis** (faixa fina ~48px com label vertical, clique expande temporariamente). Toggle Lista/Kanban persistido em `localStorage` (`fde-visao-demandas`).
+- **Metadados no detalhe:** painel lateral sticky (`lg:grid-cols-[minmax(0,1fr)_280px]`) com Criado por, Owner atual, Criado em, Última atualização, Prioridade, Domínio, Origem.
+- **Dashboard:** "Eventos recentes" abre expandido por padrão (`defaultOpen`); card do Loop inteiro clicável → `/loops` (removido botão "Expandir" isolado); seção renomeada "Últimas demandas".
+- **Ciclo de vida ao vivo:** dot pulsante na etapa ativa (`dot-halo-executando`), barra anima (`transition-[width] duration-400 ease-out`) via polling 4s.
+- **`/loops` interativo:** toggle Vertical removido (sempre horizontal); **nós arrastáveis** com persistência em `localStorage` (`fde-loop-node-positions`) + botão "Resetar layout"; arestas fixas pela ordem lógica; **CSS vars do React Flow** (`--xy-*`) sobrescritas para tema claro/dark; **drawer do agente completo** (histórico de eventos cronológico, duração + início, link para demanda). `LoopStage` estendido com `eventos`/`inicio`; `lib/loop-stages.ts` populado com eventos mock por etapa. Fix do build: `useReactFlow()` exige `ReactFlowProvider` → separado `LoopCanvasInner` (hook) do wrapper exportado `LoopCanvas` (provider).
+- **Mock populado:** `lib/mock-data.ts` agora tem **23 demandas** (3 originais + 20 novas), cobrindo todos os status do `FLUXO`, origens (cliente/regulatorio/estrategia/sre), domínios (backend/frontend/ambos) e ambiguidades.
 
-**Versionamento:** o git está inicializado (branch `main`, remoto `origin` → `git@github.com:it0dan/open-agentic-ops.git`), com 1 commit (`first commit`) contendo apenas `README.md`. O corpo documental + código permanece **local/untracked** — ainda não commitado nem pusheado.
+**Validação:** `poetry run pytest` → 28 passed; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/board`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **12/12 passed**; smoke test das rotas (`/login`, `/dashboard`, `/loops`, `/demandas`, detalhe → 200; `/board` e `/board/[id]` → 307 redirect).
 
 ## Decisões fechadas
 
@@ -42,13 +52,45 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **G7:** PII = skill (`pii-sanitizer`) como guia + módulo de redação determinístico.
 - **G8:** Eval gate = portar `run_all_evals.sh` + integrar LangSmith.
 
-### Adoção do playbook de desenvolvimento agêntico (esta sessão)
+### Adoção do playbook de desenvolvimento agêntico
 - **P1:** Portar o Feature Start Playbook (SDD/SPDD + OpenSpec + OpenCode) do `solutions-business-case-agent` (bitbucket) como base de desenvolvimento.
 - **P2:** Migrar `openspec/` para o layout canônico (`specs/<feature>/spec.md`, `archive/`, `project.md`, `config.yaml`) — reconhecido pelo CLI `openspec` v1.3.1.
 - **P3:** ADRs permanecem em `docs/adr/` (convenção Nygard) — **não** migrar para `openspec/architecture/adr/`.
 - **P4:** Change atual `squad-open-agentic-ops` tratado como **legado** (migrado sem intake retroativo); playbook completo aplica-se a features futuras.
 - **P5:** Gestor de dependências = **Poetry**.
 - **P6:** Checkpointer inicial = **SqliteSaver/InMemorySaver** (dev), migrando para PostgresSaver em prod.
+
+### Console do FDE (grilling — change `fde-console`)
+- **F1:** Escopo = console do FDE (painel de operação da squad), não o produto Open Finance entregue.
+- **F2:** Objetivo = design/spec → protótipo → skill (em etapas).
+- **F3:** Stack = Next.js (App Router) + React + TS + shadcn/ui (new-york) + Radix + Tailwind v4 + next-themes.
+- **F4:** Integração = via FastAPI adicionada ao runtime (`api/`).
+- **F5:** Funcionalidade MVP = Board + HITL + Intake manual + Auditoria.
+- **F6:** Brand book = design tokens + componentes **e** skill de frontend.
+- **F7:** Tema = dark/light toggle.
+- **F8:** Auditoria = registrar classificação + justificativa **e** correção prospectiva da heurística via API (RNF-6).
+- **F9:** Registro = novo campo `classificacao_intake` no `BoardState`.
+- **F10:** Localização = mesmo repo: `frontend/` + `api/` na raiz.
+- **F11:** Auth = mockada no MVP, tela de login desenhada, OIDC como caminho futuro.
+- **F12:** Tokens = paleta completa do brand book como CSS variables; tipografia Montserrat + Roboto Mono; corners ≤7pt. **→ REVISADO no redesign:** corners aumentados para `0.9375rem` (15px) + glassmorphism + dark-first (quebra o brand book; decisão registrada no ADR-0014 e na skill `frontend-sensedia`).
+
+### Redesign do console
+- **R1:** Direção visual = **dark-first + glassmorphism** (inspiração Vercel/Monday), preservando identidade Sensedia (roxo/laranja).
+- **R2:** **Radius aumentado** para `0.9375rem` (15px) — quebra deliberada do brand book ≤7pt, registrada como ADR.
+- **R3:** **Sidebar lateral** (desktop) + Sheet (mobile) substitui o header/nav superior.
+- **R4:** Todas as telas + design system redesenhados (Login, Board, Detalhe, Intake, Auditoria).
+- **R5:** Toasts via `sonner` (richColors, bottom-right); `TooltipProvider` no root layout.
+- **R6:** Redesign é **visual/UX** — lógica de dados (API, mock, estados) permanece intacta.
+
+### Evolução do console (sessões recentes)
+- **E1:** **Board → Demandas** — rota `/demandas` (redirect de `/board`), sidebar e títulos renomeados.
+- **E2:** **`/loops` página dedicada** full-viewport (sem modal), toolbar fixa, grafo ocupa o restante da viewport.
+- **E3:** **Filtros por facet** — 3 dropdowns (Origem/Status/Domínio) com popover+checkbox, nunca pills expostas.
+- **E4:** **Kanban read-only** — sem DnD (FDE intervém só via gate HITL); cards clicáveis → detalhe; colunas vazias auto-colapsáveis; toggle Lista/Kanban em `localStorage`.
+- **E5:** **Metadados no detalhe** — painel lateral sticky (Criado por, Owner, Criado em, Atualizado em, Prioridade, Domínio, Origem).
+- **E6:** **Dashboard** — eventos expandidos por padrão, card do Loop clicável → `/loops`, seção "Últimas demandas".
+- **E7:** **`/loops` interativo** — nós arrastáveis (persistência localStorage + reset), sempre horizontal, controles com tema do design system, drawer do agente com histórico completo + live update (polling 4s).
+- **E8:** **Mock populado** — 23 demandas cobrindo todos os status/origens/domínios/ambiguidades.
 
 ## Artefatos criados
 
@@ -61,7 +103,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `ARCHITECTURE.md` | Visão estrutural C4 (contexto, containers, componentes do grafo, board, retomada do FDE) |
 | `docs/adr/` | 13 ADRs (template Nygard) |
 | `Inicio/HANDOFF-squad-agentica.md` | Handoff original trazido e atualizado com as decisões |
-| `openspec/changes/squad-open-agentic-ops/` | Pipeline SDD/SPDD completo: `proposal.md`, `design.md`, `specs/squad-open-agentic-ops/spec.md`, `tasks.md`, `prompt.md` |
+| `openspec/changes/squad-open-agentic-ops/` | Pipeline SDD/SPDD completo (arquivado) |
 | `openspec/project.md` | Contexto do projeto (OpenSpec) |
 | `openspec/config.yaml` | Config do OpenSpec (schema spec-driven) |
 | `PROJECT.md` | Contexto do projeto (raiz) |
@@ -69,18 +111,32 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `docs/sdd/feature-intake-template.md` | Template de Feature Intake Brief (portado/adaptado) |
 | `.opencode/commands/opsx-*.md` | Comandos `/opsx:*` (explore, propose, apply, archive) |
 | `.opencode/skills/openspec-*/` | Skills OpenSpec (explore, propose, apply-change, archive-change) |
-| `.gitignore` | Regras de ignore (pronto para git init) |
-| `pyproject.toml` | Config Poetry (deps: langgraph, langchain, langsmith, OTel; extras sqlite/postgres; dev: pytest, ruff) |
-| `.env.example` | Variáveis de ambiente (sem secrets) |
-| `src/open_agentic_ops/ports/` | Portas hexagonais (LLMProvider, ToolExecution/MCP, Persistence, Notification) — ADR-0004 |
-| `src/open_agentic_ops/state/` | Modelo de estado do board (TypedDict + reducers de append) — ADR-0002 |
-| `src/open_agentic_ops/persistence/` | Factories de checkpointer (InMemory/Sqlite/Postgres) + BoardView — ADR-0002 |
-| `src/open_agentic_ops/pii/` | Redação PII determinística (regex + LGPD/FAPI-BR) — ADR-0006/0012 |
-| `src/open_agentic_ops/nodes/` | Nós: intake, guia, feature, platform, architecture, review, sre |
-| `src/open_agentic_ops/gates/` | HITL gate (`interrupt()`/`Command`) e Eval gate — ADR-0005/0009/0013 |
-| `src/open_agentic_ops/graph/` | Montagem do StateGraph (branch de ambiguidade, fan-out/fan-in, loop SRE→Intake) |
-| `src/open_agentic_ops/observability/` | LangSmith + OTel com sanitização de PII — ADR-0008 |
-| `tests/` | 10 testes (PII, Intake, integração do caso-âncora) |
+| `src/open_agentic_ops/` | Código Python da squad (ports, state, persistence, pii, nodes, gates, graph, observability) |
+| `api/main.py` | Camada FastAPI do console do FDE: board, detalhe, resume (HITL), intake, auditoria, heurística |
+| `tests/` | Testes Python (PII, Intake, integração, API) |
+| `frontend/` | Console Next.js 16 + TS + Tailwind v4 + next-themes + shadcn/ui (radix-nova) |
+| `frontend/app/globals.css` | Design tokens Sensedia (dark-first + glassmorphism) + **CSS vars do React Flow** (`--xy-*`) para tema claro/dark |
+| `frontend/app/layout.tsx` | Root layout com Montserrat + Roboto Mono + ThemeProvider + Toaster (sonner) + TooltipProvider + `defaultTheme="dark"` |
+| `frontend/app/page.tsx` | Rota raiz — renderiza guard `HomeRedirect` |
+| `frontend/components/home-redirect.tsx` | Guard client: logado → `/dashboard`, senão → `/login` |
+| `frontend/app/login/page.tsx` | Login split-screen simétrico, redirect → `/dashboard` |
+| `frontend/app/(dashboard)/layout.tsx` | Layout do dashboard (sidebar + topbar) usando `ContentContainer` |
+| `frontend/components/content-container.tsx` | Container que remove `max-w-7xl` na rota `/loops` (full-viewport) |
+| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Demandas/Loops/Intake/Auditoria |
+| `frontend/app/(dashboard)/demandas/page.tsx` | Tela de Demandas (ex-Board): KPIs, filtros por facet, toggle Lista/Kanban, cards |
+| `frontend/app/(dashboard)/demandas/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **metadados sticky** |
+| `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/demandas`) |
+| `frontend/app/(dashboard)/loops/page.tsx` | Página `/loops` full-viewport com `LoopCanvas` |
+| `frontend/components/filter-bar.tsx` | Filtros por facet (3 dropdowns popover+checkbox) |
+| `frontend/components/kanban-board.tsx` | Kanban read-only, 9 colunas auto-colapsáveis, cards clicáveis |
+| `frontend/components/loop-canvas.tsx` | Grafo React Flow interativo (nós arrastáveis, reset, drawer do agente) |
+| `frontend/components/loop-status.tsx` | Card do Loop clicável → `/loops`; define `LoopStage` (com `eventos`/`inicio`) |
+| `frontend/lib/loop-stages.ts` | `montarStages` (extraído) com eventos mock por etapa |
+| `frontend/lib/mock-data.ts` | **23 demandas** mock (3 originais + 20 novas) |
+| `frontend/lib/api.ts` | Cliente HTTP do frontend para a API FastAPI |
+| `frontend/components/ui/` | Componentes base shadcn (inclui popover, checkbox, sheet, dialog, progress, etc.) |
+| `.opencode/skills/frontend-sensedia/SKILL.md` | Skill de frontend (Guia): brand book Sensedia + padrão shadcn/ui |
+| `docs/adr/0014-api-layer-and-fde-console.md` | ADR da camada de API + console (radius, dark-first, glassmorphism) |
 
 ## Skills instaladas (em `~/.agents/skills/`)
 
@@ -99,10 +155,10 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 ## Próximos passos
 
-> **Estado:** implementação do grafo concluída e validada (24/24 tasks). Próximo passo: arquivar o change e versionar o repo.
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37). Redesign + evolução do console (Demandas, /loops, Kanban read-only, filtros por facet, metadados, mock populado) **concluídos e validados** (lint/build/test verdes, 12/12). **Falta commitar o change `fde-console` (requer confirmação explícita).**
 
-1. **Arquivar o change** — rodar `/opsx:archive squad-open-agentic-ops` para mover `openspec/changes/squad-open-agentic-ops/` para `openspec/archive/<date>-squad-open-agentic-ops/`.
-2. **Commitar a fundação documental + código** — o git já está inicializado (remoto `origin` → `it0dan/open-agentic-ops`, 1 commit com só `README.md`); falta versionar e pushar o corpo documental + código. Push requer confirmação explícita.
+1. **Commitar o change `fde-console`** ao final da implementação (requer confirmação explícita). Todos os Grupos 1–7 + redesign + evoluções recentes estão soltos no working tree (não commitados).
+2. **Smoke test visual completo** das novas funcionalidades (recomendado antes de commitar): login → `/dashboard`, card do Loop clicável → `/loops`, nós arrastáveis + reset + drawer do agente, Kanban read-only com colunas colapsadas, filtros por facet, metadados no detalhe, ciclo de vida com pulse.
 3. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
 4. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
 5. **Definir os Guias concretos** (skills backend/frontend) para o nó Feature Agent.

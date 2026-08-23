@@ -57,6 +57,7 @@ const FLUXO: Status[] = [
   "em_eval",
   "deployado",
   "monitorado",
+  "rejeitado",
 ];
 
 function formatarData(iso?: string): string {
@@ -94,6 +95,8 @@ export default function DetalhePage() {
   const [enviando, setEnviando] = useState(false);
   const [rascunhoSpec, setRascunhoSpec] = useState("");
   const [liberando, setLiberando] = useState(false);
+  const [modoRessalva, setModoRessalva] = useState(false);
+  const [observacao, setObservacao] = useState("");
 
   useEffect(() => {
     let ativo = true;
@@ -137,18 +140,31 @@ export default function DetalhePage() {
   const etapaAtual = Math.max(0, FLUXO.indexOf(demanda.status));
   const progresso = Math.round((etapaAtual / (FLUXO.length - 1)) * 100);
 
-  async function decidir(aprovado: boolean) {
+  async function decidir(
+    decisao: "aprovado" | "aprovado_com_ressalvas" | "rejeitado",
+  ) {
     setEnviando(true);
     setErro(null);
     try {
       const atualizada = await aprovarDemanda({
         thread_id: params.threadId,
-        aprovado,
-        comentario: aprovado ? "Aprovado pelo FDE." : "Rejeitado pelo FDE.",
+        decisao,
+        observacao:
+          decisao === "aprovado_com_ressalvas"
+            ? observacao.trim() || "Aprovado com ressalvas."
+            : decisao === "rejeitado"
+              ? "Rejeitado pelo FDE."
+              : "Aprovado pelo FDE.",
       });
       setDemanda(atualizada);
+      setModoRessalva(false);
+      setObservacao("");
       toast.success(
-        aprovado ? "Demanda aprovada" : "Demanda rejeitada",
+        decisao === "rejeitado"
+          ? "Demanda rejeitada"
+          : decisao === "aprovado_com_ressalvas"
+            ? "Aprovado com ressalvas"
+            : "Demanda aprovada",
         { description: "Decisão registrada no HITL gate." },
       );
     } catch (e) {
@@ -299,21 +315,46 @@ export default function DetalhePage() {
           <CardContent className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => decidir(true)}
+                onClick={() => decidir("aprovado")}
                 disabled={enviando}
                 className="rounded-xl bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
               >
                 <Check className="mr-2 size-4" /> Aprovar
               </Button>
               <Button
+                onClick={() => setModoRessalva((v) => !v)}
+                disabled={enviando}
+                variant="outline"
+                className="rounded-xl"
+              >
+                <MessageSquare className="mr-2 size-4" /> Aprovar com ressalvas
+              </Button>
+              <Button
                 variant="destructive"
-                onClick={() => decidir(false)}
+                onClick={() => decidir("rejeitado")}
                 disabled={enviando}
                 className="rounded-xl"
               >
                 <X className="mr-2 size-4" /> Rejeitar
               </Button>
             </div>
+            {modoRessalva && (
+              <div className="flex flex-col gap-2">
+                <Textarea
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  placeholder="Descreva a ressalva (registrada no HITL, não bloqueia o fluxo)..."
+                  rows={2}
+                />
+                <Button
+                  onClick={() => decidir("aprovado_com_ressalvas")}
+                  disabled={enviando}
+                  className="self-end rounded-xl"
+                >
+                  <Send className="mr-2 size-4" /> Confirmar aprovação com ressalva
+                </Button>
+              </div>
+            )}
             {erro && <p className="text-sm text-destructive">{erro}</p>}
           </CardContent>
         </Card>
@@ -448,16 +489,29 @@ export default function DetalhePage() {
               </CardHeader>
               <CardContent>
                 {demanda.decisao_hitl ? (
-                  <Badge
-                    variant="outline"
-                    className={
-                      demanda.decisao_hitl.aprovado
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
-                    }
-                  >
-                    {demanda.decisao_hitl.aprovado ? "Aprovado" : "Rejeitado"}
-                  </Badge>
+                  <div className="space-y-2">
+                    <Badge
+                      variant="outline"
+                      className={
+                        demanda.decisao_hitl.decisao === "rejeitado"
+                          ? "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                          : demanda.decisao_hitl.decisao === "aprovado_com_ressalvas"
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      }
+                    >
+                      {demanda.decisao_hitl.decisao === "rejeitado"
+                        ? "Rejeitado"
+                        : demanda.decisao_hitl.decisao === "aprovado_com_ressalvas"
+                          ? "Aprovado com ressalvas"
+                          : "Aprovado"}
+                    </Badge>
+                    {demanda.decisao_hitl.observacao && (
+                      <p className="text-xs text-muted-foreground">
+                        {demanda.decisao_hitl.observacao}
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Aguardando decisão do FDE.

@@ -13,6 +13,7 @@ const STATUS_STYLE: Record<Status, string> = {
   em_eval: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
   deployado: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
   monitorado: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  rejeitado: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
 };
 
 export function StatusBadge({

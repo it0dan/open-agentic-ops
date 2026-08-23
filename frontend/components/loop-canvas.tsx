@@ -176,8 +176,8 @@ function LoopCanvasInner({
     try {
       await aprovarDemanda({
         thread_id: selecionado.thread_id,
-        aprovado,
-        comentario: aprovado ? "Aprovado pelo FDE." : "Rejeitado pelo FDE.",
+        decisao: aprovado ? "aprovado" : "rejeitado",
+        observacao: aprovado ? "Aprovado pelo FDE." : "Rejeitado pelo FDE.",
       });
       toast.success(
         aprovado ? "Demanda aprovada" : "Demanda rejeitada",

@@ -50,29 +50,29 @@ describe("DetalhePage", () => {
     vi.mocked(aprovarDemanda).mockResolvedValue({
       ...demandaHitl,
       status: "monitorado",
-      decisao_hitl: { aprovado: true, comentario: "Aprovado pelo FDE." },
+      decisao_hitl: { decisao: "aprovado", observacao: "Aprovado pelo FDE." },
     });
 
     render(<DetalhePage />);
 
-    const aprovar = await screen.findByRole("button", { name: /Aprovar/i });
+    const aprovar = await screen.findByRole("button", { name: /^Aprovar$/i });
     await user.click(aprovar);
 
     await waitFor(() => {
       expect(aprovarDemanda).toHaveBeenCalledWith({
         thread_id: "9f2c1a3e-7b4d-4c8e-9a1f-2d3e4f5a6b7c",
-        aprovado: true,
-        comentario: "Aprovado pelo FDE.",
+        decisao: "aprovado",
+        observacao: "Aprovado pelo FDE.",
       });
     });
   });
 
-  it("aciona aprovarDemanda com aprovado=false ao clicar em Rejeitar", async () => {
+  it("aciona aprovarDemanda com decisao=rejeitado ao clicar em Rejeitar", async () => {
     const user = userEvent.setup();
     vi.mocked(aprovarDemanda).mockResolvedValue({
       ...demandaHitl,
-      status: "aguardando_hitl",
-      decisao_hitl: { aprovado: false, comentario: "Rejeitado pelo FDE." },
+      status: "rejeitado",
+      decisao_hitl: { decisao: "rejeitado", observacao: "Rejeitado pelo FDE." },
     });
 
     render(<DetalhePage />);
@@ -83,8 +83,43 @@ describe("DetalhePage", () => {
     await waitFor(() => {
       expect(aprovarDemanda).toHaveBeenCalledWith({
         thread_id: "9f2c1a3e-7b4d-4c8e-9a1f-2d3e4f5a6b7c",
-        aprovado: false,
-        comentario: "Rejeitado pelo FDE.",
+        decisao: "rejeitado",
+        observacao: "Rejeitado pelo FDE.",
+      });
+    });
+  });
+
+  it("aprova com ressalvas enviando a observação digitada", async () => {
+    const user = userEvent.setup();
+    vi.mocked(aprovarDemanda).mockResolvedValue({
+      ...demandaHitl,
+      status: "monitorado",
+      decisao_hitl: {
+        decisao: "aprovado_com_ressalvas",
+        observacao: "revisar cobertura de testes",
+      },
+    });
+
+    render(<DetalhePage />);
+
+    const ressalvas = await screen.findByRole("button", {
+      name: /Aprovar com ressalvas/i,
+    });
+    await user.click(ressalvas);
+
+    const textarea = await screen.findByPlaceholderText(/Descreva a ressalva/i);
+    await user.type(textarea, "revisar cobertura de testes");
+
+    const confirmar = await screen.findByRole("button", {
+      name: /Confirmar aprovação com ressalva/i,
+    });
+    await user.click(confirmar);
+
+    await waitFor(() => {
+      expect(aprovarDemanda).toHaveBeenCalledWith({
+        thread_id: "9f2c1a3e-7b4d-4c8e-9a1f-2d3e4f5a6b7c",
+        decisao: "aprovado_com_ressalvas",
+        observacao: "revisar cobertura de testes",
       });
     });
   });

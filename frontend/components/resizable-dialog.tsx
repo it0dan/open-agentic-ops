@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Grip } from "lucide-react";
+import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,7 @@ export function ResizableDialogContent({
   maxWidth = 960,
   maxHeight = 880,
   ...props
-}: React.ComponentProps<"div"> & {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
   defaultWidth?: number;
   defaultHeight?: number;
   minWidth?: number;
@@ -54,11 +55,11 @@ export function ResizableDialogContent({
   }, []);
 
   return (
-    <div
+    <DialogPrimitive.Content
       {...props}
       style={{ width: size.width, height: size.height }}
       className={cn(
-        "fixed top-1/2 left-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10",
+        "fixed top-1/2 left-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 outline-none",
         className,
       )}
     >
@@ -73,6 +74,6 @@ export function ResizableDialogContent({
       >
         <Grip className="size-4 rotate-45" />
       </div>
-    </div>
+    </DialogPrimitive.Content>
   );
 }

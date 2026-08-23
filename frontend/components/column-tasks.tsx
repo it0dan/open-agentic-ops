@@ -24,6 +24,7 @@ const FLUXO: Status[] = [
   "em_eval",
   "deployado",
   "monitorado",
+  "rejeitado",
 ];
 
 function ColumnCard({ demanda }: { demanda: Demanda }) {

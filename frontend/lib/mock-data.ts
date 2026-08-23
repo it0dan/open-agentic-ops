@@ -22,7 +22,8 @@ export type Status =
   | "aprovado"
   | "em_eval"
   | "deployado"
-  | "monitorado";
+  | "monitorado"
+  | "rejeitado";
 
 export interface Worktree {
   dominio: Dominio;
@@ -43,9 +44,11 @@ export interface Adr {
   conteudo: string;
 }
 
+export type DecisaoFDE = "aprovado" | "aprovado_com_ressalvas" | "rejeitado";
+
 export interface DecisaoHitl {
-  aprovado: boolean;
-  comentario: string | null;
+  decisao: DecisaoFDE;
+  observacao: string | null;
 }
 
 export interface ResultadoEval {
@@ -253,7 +256,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     resultado_eval: { aprovado: true, detalhes: "Trajectory eval passou." },
     classificacao_intake: {
       dominio: "backend",
@@ -532,7 +535,7 @@ export const demandasMock: Demanda[] = [
       },
     ],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado pelo FDE." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado pelo FDE." },
     classificacao_intake: {
       dominio: "backend",
       ambiguidade: "alta",
@@ -578,7 +581,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     classificacao_intake: {
       dominio: "frontend",
       ambiguidade: "baixa",
@@ -624,7 +627,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     resultado_eval: { aprovado: true, detalhes: "Trajectory eval passou." },
     classificacao_intake: {
       dominio: "backend",
@@ -671,7 +674,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     resultado_eval: { aprovado: true, detalhes: "Trajectory eval passou." },
     classificacao_intake: {
       dominio: "frontend",
@@ -926,7 +929,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     classificacao_intake: {
       dominio: "frontend",
       ambiguidade: "baixa",
@@ -972,7 +975,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     classificacao_intake: {
       dominio: "backend",
       ambiguidade: "baixa",
@@ -1018,7 +1021,7 @@ export const demandasMock: Demanda[] = [
     ],
     adrs: [],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     resultado_eval: { aprovado: true, detalhes: "Trajectory eval passou." },
     classificacao_intake: {
       dominio: "frontend",
@@ -1070,7 +1073,7 @@ export const demandasMock: Demanda[] = [
       },
     ],
     feedback_review: [],
-    decisao_hitl: { aprovado: true, comentario: "Aprovado." },
+    decisao_hitl: { decisao: "aprovado", observacao: "Aprovado." },
     resultado_eval: { aprovado: true, detalhes: "Trajectory eval passou." },
     classificacao_intake: {
       dominio: "backend",
@@ -1231,4 +1234,5 @@ export const STATUS_LABEL: Record<Status, string> = {
   em_eval: "Em eval",
   deployado: "Deployado",
   monitorado: "Monitorado",
+  rejeitado: "Rejeitado",
 };

@@ -30,8 +30,8 @@ export function obterDemanda(threadId: string): Promise<Demanda> {
 
 export interface ResumePayload {
   thread_id: string;
-  aprovado?: boolean;
-  comentario?: string | null;
+  decisao?: "aprovado" | "aprovado_com_ressalvas" | "rejeitado";
+  observacao?: string | null;
   spec?: string;
 }
 

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api", () => ({
@@ -73,5 +74,26 @@ describe("NovaDemandaModal", () => {
     expect(
       screen.getByRole("button", { name: /Enviar para o Intake/i }),
     ).toBeDisabled();
+  });
+
+  it("fecha ao pressionar Escape", async () => {
+    const onClose = vi.fn();
+    render(<NovaDemandaModal aberto onClose={onClose} />);
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("fecha ao clicar fora do modal (overlay)", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<NovaDemandaModal aberto onClose={onClose} />);
+
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+    expect(overlay).not.toBeNull();
+    await user.pointer({ keys: "[MouseLeft]", target: overlay as Element });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });

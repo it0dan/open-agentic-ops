@@ -85,6 +85,43 @@ def test_intake_texto_vazio(client):
     assert r.status_code == 422
 
 
+def test_intake_campos_estruturados(client):
+    r = client.post(
+        "/intake",
+        json={
+            "origem": "estrategia",
+            "origem_subtipo": "nova_funcionalidade",
+            "prioridade": "alta",
+            "titulo": "Onboarding digital PJ",
+            "texto": "Lançar onboarding digital com verificação facial para novos clientes PJ.",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["origem"] == "estrategia"
+    assert body["origem_subtipo"] == "nova_funcionalidade"
+    assert body["prioridade"] == "alta"
+    assert body["titulo"] == "Onboarding digital PJ"
+
+    tid = body["thread_id"]
+    detalhe = client.get(f"/tasks/{tid}").json()
+    assert detalhe["origem_subtipo"] == "nova_funcionalidade"
+    assert detalhe["prioridade"] == "alta"
+    assert detalhe["titulo"] == "Onboarding digital PJ"
+
+
+def test_intake_defaults_quando_omitidos(client):
+    r = client.post(
+        "/intake",
+        json={"origem": "cliente", "texto": "Adicionar botão de download no dashboard."},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["prioridade"] == "media"
+    assert body["origem_subtipo"] is None
+    assert body["titulo"] is None
+
+
 def test_board_lista_demandas(client):
     client.post(
         "/intake",

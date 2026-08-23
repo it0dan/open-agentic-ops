@@ -28,7 +28,7 @@ from open_agentic_ops.nodes.intake import (
     salvar_heuristica,
 )
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
-from open_agentic_ops.state import BoardState, Origem
+from open_agentic_ops.state import BoardState, Origem, OrigemSubtipo, Prioridade
 
 
 class ResumeBody(BaseModel):
@@ -40,6 +40,9 @@ class ResumeBody(BaseModel):
 
 class IntakeBody(BaseModel):
     origem: Origem = "cliente"
+    origem_subtipo: OrigemSubtipo | None = None
+    prioridade: Prioridade = "media"
+    titulo: str | None = None
     texto: str = Field(min_length=1)
 
 
@@ -122,7 +125,13 @@ def create_app() -> FastAPI:
         thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
         result = graph.invoke(
-            {"origem": body.origem, "spec": body.texto},
+            {
+                "origem": body.origem,
+                "origem_subtipo": body.origem_subtipo,
+                "prioridade": body.prioridade,
+                "titulo": body.titulo,
+                "spec": body.texto,
+            },
             config,
         )
         return {"thread_id": thread_id, **_detalhe(thread_id, result)}
@@ -201,6 +210,9 @@ def _resumo(thread_id: str, snap: BoardState) -> dict:
     return {
         "thread_id": thread_id,
         "origem": snap.get("origem"),
+        "origem_subtipo": snap.get("origem_subtipo"),
+        "prioridade": snap.get("prioridade"),
+        "titulo": snap.get("titulo"),
         "ambiguidade": snap.get("ambiguidade"),
         "spec_autor": snap.get("spec_autor"),
         "dominio": snap.get("domino"),

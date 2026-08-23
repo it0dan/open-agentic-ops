@@ -95,8 +95,30 @@ function StageMini({ estado }: { estado: LoopStage["estado"] }) {
 const nodeTypes = { loop: LoopNode };
 
 function posicaoPadrao(stages: LoopStage[]) {
-  return stages.map((stage, i) => ({ x: i * 220, y: 0 }));
+  const mapa: Record<string, { x: number; y: number }> = {
+    intake: { x: 0, y: 120 },
+    feature_backend: { x: 220, y: 0 },
+    feature_frontend: { x: 220, y: 240 },
+    review: { x: 520, y: 120 },
+    hitl: { x: 740, y: 120 },
+    eval: { x: 960, y: 120 },
+    deploy: { x: 1180, y: 120 },
+    monitor: { x: 1400, y: 120 },
+  };
+  return stages.map((stage) => mapa[stage.id] ?? { x: 0, y: 0 });
 }
+
+const TOPOLOGIA: Array<[string, string]> = [
+  ["intake", "feature_backend"],
+  ["intake", "feature_frontend"],
+  ["feature_backend", "review"],
+  ["feature_frontend", "review"],
+  ["review", "hitl"],
+  ["hitl", "eval"],
+  ["eval", "deploy"],
+  ["deploy", "monitor"],
+  ["monitor", "intake"],
+];
 
 function LoopCanvasInner({
   stages,
@@ -137,12 +159,27 @@ function LoopCanvasInner({
 
   const edges = useMemo<Edge[]>(
     () =>
-      stages.slice(0, -1).map((stage, i) => ({
-        id: `e-${stage.id}-${stages[i + 1].id}`,
-        source: stage.id,
-        target: stages[i + 1].id,
-        animated: stages[i + 1].estado === "executando",
-      })),
+      TOPOLOGIA.filter(([source, target]) =>
+        stages.some((s) => s.id === source) && stages.some((s) => s.id === target),
+      ).map(([source, target]) => {
+        const alvo = stages.find((s) => s.id === target);
+        const ehCiclo = source === "monitor" && target === "intake";
+        return {
+          id: `e-${source}-${target}`,
+          source,
+          target,
+          animated: alvo?.estado === "executando",
+          ...(ehCiclo
+            ? {
+                type: "smoothstep",
+                style: { strokeDasharray: "6 4", stroke: "#a78bfa" },
+                label: "SRE → Intake",
+                labelStyle: { fontSize: 10, fill: "#a78bfa" },
+                labelBgStyle: { fill: "transparent" },
+              }
+            : {}),
+        };
+      }),
     [stages],
   );
 

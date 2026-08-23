@@ -40,21 +40,21 @@ export function montarStages(demandas: Demanda[]): LoopStage[] {
       ],
     },
     {
-      id: "feature",
-      label: "Feature",
+      id: "feature_backend",
+      label: "Feature Backend",
       agente: "Feature Agent",
       estado: emExecucao ? "executando" : "concluido",
       progresso: emExecucao ? Math.max(20, progressoMedio) : 100,
       ultimaAcao: emExecucao
         ? "Implementando spec aprovada no domínio backend."
-        : "Feature implementada conforme spec.",
+        : "Feature backend implementada conforme spec.",
       duracao: emExecucao ? "2m 04s" : "3m 01s",
       inicio: "10:15:13",
       eventos: [
         {
           timestamp: "10:15:13",
           tipo: "info",
-          mensagem: "Worktree criado a partir do guia do domínio.",
+          mensagem: "Worktree backend criado a partir do guia do domínio.",
         },
         {
           timestamp: "10:16:40",
@@ -67,6 +67,39 @@ export function montarStages(demandas: Demanda[]): LoopStage[] {
                 timestamp: "10:17:17",
                 tipo: "info",
                 mensagem: "Implementando spec aprovada no domínio backend.",
+              } as const,
+            ]
+          : []),
+      ],
+    },
+    {
+      id: "feature_frontend",
+      label: "Feature Frontend",
+      agente: "Feature Agent",
+      estado: emExecucao ? "executando" : "concluido",
+      progresso: emExecucao ? Math.max(20, progressoMedio) : 100,
+      ultimaAcao: emExecucao
+        ? "Implementando spec aprovada no domínio frontend."
+        : "Feature frontend implementada conforme spec.",
+      duracao: emExecucao ? "1m 58s" : "2m 47s",
+      inicio: "10:15:13",
+      eventos: [
+        {
+          timestamp: "10:15:13",
+          tipo: "info",
+          mensagem: "Worktree frontend criado a partir do guia do domínio.",
+        },
+        {
+          timestamp: "10:16:35",
+          tipo: "sucesso",
+          mensagem: "Componentes de interface atualizados.",
+        },
+        ...(emExecucao
+          ? [
+              {
+                timestamp: "10:17:17",
+                tipo: "info",
+                mensagem: "Implementando spec aprovada no domínio frontend.",
               } as const,
             ]
           : []),

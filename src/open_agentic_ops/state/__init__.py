@@ -104,6 +104,7 @@ class BoardState(TypedDict, total=False):
     spec: str
     status: Status
     domino: Dominio
+    toca_contrato_externo: bool
     worktrees: Annotated[list[Worktree], operator.add]
     feedback_review: Annotated[list[FeedbackReview], operator.add]
     origem_discordancia: OrigemDiscordancia

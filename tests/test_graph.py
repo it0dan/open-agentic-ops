@@ -239,3 +239,51 @@ def test_sre_gera_task_e_dispara_port_criar_demanda():
     assert rm["descricao_task"]
     assert len(chamadas) == 1
     assert chamadas[0] == rm["descricao_task"]
+
+
+def test_architecture_acionado_quando_spec_toca_contrato_externo():
+    app = build_graph().compile(checkpointer=build_dev_checkpointer())
+    config = {"configurable": {"thread_id": "arch-on-1"}}
+
+    result = app.invoke(
+        {
+            "origem": "cliente",
+            "spec": "Adicionar endpoint externo de consulta de saldo no dashboard.",
+        },
+        config,
+    )
+
+    assert result["toca_contrato_externo"] is True
+    assert len(result["adrs"]) >= 1
+
+
+def test_architecture_nao_acionado_quando_spec_rotineira():
+    app = build_graph().compile(checkpointer=build_dev_checkpointer())
+    config = {"configurable": {"thread_id": "arch-off-1"}}
+
+    result = app.invoke(
+        {
+            "origem": "cliente",
+            "spec": "Adicionar botão de download no dashboard.",
+        },
+        config,
+    )
+
+    assert result["toca_contrato_externo"] is False
+    assert result["adrs"] == []
+
+
+def test_architecture_frontend_nao_toca_contrato_externo():
+    app = build_graph().compile(checkpointer=build_dev_checkpointer())
+    config = {"configurable": {"thread_id": "arch-front-1"}}
+
+    result = app.invoke(
+        {
+            "origem": "cliente",
+            "spec": "Adicionar componente de interface no dashboard.",
+        },
+        config,
+    )
+
+    assert result["toca_contrato_externo"] is False
+    assert result["adrs"] == []

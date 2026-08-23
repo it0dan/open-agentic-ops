@@ -56,6 +56,30 @@ def _goal_atingido(verificacao: dict) -> bool:
     return all(resp.get("ok") for resp in verificacao.values())
 
 
+_CONTRATO_EXTERNO_KEYWORDS = (
+    "contrato externo",
+    "fapi-br",
+    "endpoint externo",
+    "schema",
+    "manual de apis",
+    "manual de escopo",
+    "portabilidade",
+    "instrucao normativa",
+    "oauth",
+    "token",
+)
+
+
+def _toca_contrato_externo(spec: str) -> bool:
+    """Heurística determinística (decisão 7.3, Camada 1).
+
+    Avalia se a spec toca contrato de API externo/regulado por substring match
+    contra keywords. O reasoner real (LLM) fica para Camada 2.
+    """
+    t = spec.lower()
+    return any(k in t for k in _CONTRATO_EXTERNO_KEYWORDS)
+
+
 def make_feature_node(
     dominio: Dominio,
     *,
@@ -123,8 +147,12 @@ def make_feature_node(
             "historico": historico,
         }
 
-        return {
+        retorno: BoardState = {
             "worktrees": [worktree],
         }
+        if guia.dominio in ("backend", "ambos"):
+            retorno["toca_contrato_externo"] = _toca_contrato_externo(spec)
+
+        return retorno
 
     return feature_node

@@ -102,6 +102,18 @@ def route_by_eval_result(state: BoardState) -> str:
     return "aprovado" if aprovado else "reprovado"
 
 
+def route_by_architecture(state: BoardState) -> str:
+    """Aresta condicional do Architecture (decisão 7.3).
+
+    Aciona o Architecture apenas quando a spec toca contrato de API
+    externo/regulado (decidido pelo Feature Agent); caso contrário, segue
+    direto ao Review.
+    """
+    if state.get("toca_contrato_externo"):
+        return "architecture"
+    return "review"
+
+
 def make_deploy_node(
     tools: ToolExecutionPort | None = None,
 ) -> Callable[[BoardState], BoardState]:
@@ -124,7 +136,6 @@ def build_graph(
     llm: LLMProviderPort | None = None,
     tools: ToolExecutionPort | None = None,
     skill_dir: str | None = None,
-    architecture_enabled: bool = True,
     eval_runner: Callable[[str], ResultadoEval] | None = None,
     criar_demanda: Callable[[str], str] | None = None,
     monitorar: Callable[[], dict] | None = None,
@@ -182,11 +193,12 @@ def build_graph(
     builder.add_edge("feature_frontend", "platform")
     builder.add_edge("platform", "fan_in")
 
-    if architecture_enabled:
-        builder.add_edge("fan_in", "architecture")
-        builder.add_edge("architecture", "review")
-    else:
-        builder.add_edge("fan_in", "review")
+    builder.add_conditional_edges(
+        "fan_in",
+        route_by_architecture,
+        {"architecture": "architecture", "review": "review"},
+    )
+    builder.add_edge("architecture", "review")
 
     builder.add_edge("review", "marcar_hitl")
     builder.add_edge("marcar_hitl", "hitl")

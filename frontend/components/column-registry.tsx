@@ -52,7 +52,7 @@ function ColumnCard({ demanda }: { demanda: Demanda }) {
   );
 }
 
-export function ColumnBoard({ demandas }: { demandas: Demanda[] }) {
+export function ColumnRegistry({ demandas }: { demandas: Demanda[] }) {
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
 
   const porColuna = useMemo(() => {

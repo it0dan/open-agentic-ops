@@ -14,9 +14,9 @@ vi.mock("next/link", () => ({
 }));
 
 import { listarDemandas } from "@/lib/api";
-import BoardPage from "./page";
+import RegistryPage from "./page";
 
-describe("BoardPage", () => {
+describe("RegistryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -24,7 +24,7 @@ describe("BoardPage", () => {
   it("renderiza as demandas vindas da API", async () => {
     vi.mocked(listarDemandas).mockResolvedValue(demandasMock);
 
-    render(<BoardPage />);
+    render(<RegistryPage />);
 
     expect(await screen.findByText(/Adicionar botão de download/i)).toBeInTheDocument();
     expect(screen.getByText(/Nova Instrução Normativa/i)).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("BoardPage", () => {
   it("exibe estado vazio quando não há demandas", async () => {
     vi.mocked(listarDemandas).mockResolvedValue([]);
 
-    render(<BoardPage />);
+    render(<RegistryPage />);
 
     expect(
       await screen.findByText(/Nenhuma demanda encontrada/i),
@@ -43,7 +43,7 @@ describe("BoardPage", () => {
   it("alterna para a visão de colunas ao clicar no toggle", async () => {
     vi.mocked(listarDemandas).mockResolvedValue(demandasMock);
 
-    render(<BoardPage />);
+    render(<RegistryPage />);
 
     await screen.findByText(/Adicionar botão de download/i);
 

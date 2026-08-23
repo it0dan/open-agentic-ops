@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
-import { ColumnBoard } from "@/components/column-board";
+import { ColumnRegistry } from "@/components/column-registry";
 import { FilterBar, type FilterGroup } from "@/components/filter-bar";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
@@ -60,7 +60,7 @@ const FILTER_GROUPS: FilterGroup[] = [
   },
 ];
 
-export default function BoardPage() {
+export default function RegistryPage() {
   const { demandas, carregando } = useDemandasPolling();
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<
@@ -258,7 +258,7 @@ export default function BoardPage() {
           description="Ajuste os filtros ou injete uma nova demanda pelo Intake."
         />
       ) : visao === "colunas" ? (
-        <ColumnBoard demandas={filtradas} />
+        <ColumnRegistry demandas={filtradas} />
       ) : (
         <div className="space-y-3">
           {filtradas.map((d) => (

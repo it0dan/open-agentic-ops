@@ -48,7 +48,7 @@ export default function LoginPage() {
           </p>
           <div className="mt-8 space-y-3">
             {[
-              { icon: Workflow, text: "Board unificado de demandas" },
+              { icon: Workflow, text: "Registry unificado de demandas" },
               { icon: ShieldCheck, text: "Gate HITL com aprovação do FDE" },
               { icon: Sparkles, text: "Auditoria prospectiva da heurística" },
             ].map((f) => (

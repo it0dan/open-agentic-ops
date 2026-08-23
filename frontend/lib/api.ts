@@ -1,4 +1,4 @@
-import type { Demanda } from "@/lib/mock-data";
+import type { Demanda, Origem, OrigemSubtipo, Prioridade } from "@/lib/mock-data";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -50,7 +50,10 @@ export function autorarSpec(threadId: string, spec: string): Promise<Demanda> {
 }
 
 export interface IntakePayload {
-  origem: string;
+  origem: Origem;
+  origem_subtipo?: OrigemSubtipo;
+  prioridade?: Prioridade;
+  titulo?: string;
   texto: string;
 }
 

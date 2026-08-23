@@ -1,4 +1,14 @@
 export type Origem = "cliente" | "regulatorio" | "estrategia" | "sre";
+export type OrigemSubtipo =
+  | "pedido"
+  | "incidente"
+  | "norma"
+  | "instrucao_normativa"
+  | "nova_funcionalidade"
+  | "melhoria"
+  | "bug"
+  | "performance";
+export type Prioridade = "alta" | "media" | "baixa";
 export type Ambiguidade = "baixa" | "alta";
 export type SpecAutor = "intake" | "fde";
 export type Dominio = "backend" | "frontend" | "ambos";
@@ -60,6 +70,9 @@ export interface EventoLoop {
 export interface Demanda {
   thread_id: string;
   origem: Origem;
+  origem_subtipo?: OrigemSubtipo;
+  prioridade?: Prioridade;
+  titulo?: string;
   ambiguidade: Ambiguidade;
   spec_autor: SpecAutor;
   dominio: Dominio;
@@ -1175,6 +1188,30 @@ export const ORIGEM_LABEL: Record<Origem, string> = {
   regulatorio: "Regulatório",
   estrategia: "Estratégia",
   sre: "SRE",
+};
+
+export const ORIGEM_SUBTIPO_LABEL: Record<OrigemSubtipo, string> = {
+  pedido: "Pedido",
+  incidente: "Incidente",
+  norma: "Norma",
+  instrucao_normativa: "Instrução normativa",
+  nova_funcionalidade: "Nova funcionalidade",
+  melhoria: "Melhoria",
+  bug: "Bug",
+  performance: "Performance",
+};
+
+export const ORIGEM_SUBTIPOS: Record<Origem, OrigemSubtipo[]> = {
+  cliente: ["pedido", "incidente"],
+  regulatorio: ["norma", "instrucao_normativa"],
+  estrategia: ["nova_funcionalidade", "melhoria"],
+  sre: ["bug", "performance"],
+};
+
+export const PRIORIDADE_LABEL: Record<Prioridade, string> = {
+  alta: "Alta",
+  media: "Média",
+  baixa: "Baixa",
 };
 
 export const DOMINIO_LABEL: Record<Dominio, string> = {

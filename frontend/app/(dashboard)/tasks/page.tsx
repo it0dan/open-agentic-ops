@@ -317,7 +317,7 @@ export default function TasksPage() {
                     </span>
                   </div>
                   <p className="mt-4 line-clamp-2 text-sm font-medium text-foreground/90">
-                    {d.spec}
+                    {d.titulo || d.spec}
                   </p>
                   <p className="mt-2 font-mono text-xs text-muted-foreground">
                     {d.thread_id}

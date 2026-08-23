@@ -40,7 +40,9 @@ function ColumnCard({ demanda }: { demanda: Demanda }) {
           {DOMINIO_LABEL[demanda.dominio]}
         </Badge>
       </div>
-      <p className="mt-2 line-clamp-2 text-sm font-medium">{demanda.spec}</p>
+      <p className="mt-2 line-clamp-2 text-sm font-medium">
+        {demanda.titulo || demanda.spec}
+      </p>
       {demanda.progresso !== undefined && (
         <div className="mt-2 flex items-center gap-2">
           <Progress value={demanda.progresso} className="h-1.5" />

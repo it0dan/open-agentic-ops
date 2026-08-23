@@ -38,6 +38,8 @@ import { aprovarDemanda, autorarSpec, obterDemanda } from "@/lib/api";
 import {
   DOMINIO_LABEL,
   ORIGEM_LABEL,
+  ORIGEM_SUBTIPO_LABEL,
+  PRIORIDADE_LABEL,
   demandasMock,
   type Demanda,
   type EventoLoop,
@@ -75,7 +77,8 @@ function criadoPor(d: Demanda): string {
   return d.spec_autor === "fde" ? "FDE" : "Intake Agent";
 }
 
-function prioridade(d: Demanda): "Alta" | "Baixa" {
+function prioridade(d: Demanda): string {
+  if (d.prioridade) return PRIORIDADE_LABEL[d.prioridade];
   return d.ambiguidade === "alta" ? "Alta" : "Baixa";
 }
 
@@ -533,6 +536,7 @@ export default function DetalhePage() {
               <CardTitle className="text-sm font-semibold">Metadados</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <MetaItem label="Título" value={demanda.titulo ?? "—"} />
               <MetaItem label="Criado por" value={criadoPor(demanda)} />
               <MetaItem label="Owner atual" value={demanda.agente_atual ?? "—"} />
               <MetaItem
@@ -544,6 +548,14 @@ export default function DetalhePage() {
                 value={formatarData(demanda.atualizado_em)}
               />
               <MetaItem label="Prioridade" value={prioridade(demanda)} />
+              <MetaItem
+                label="Subtipo"
+                value={
+                  demanda.origem_subtipo
+                    ? ORIGEM_SUBTIPO_LABEL[demanda.origem_subtipo]
+                    : "—"
+                }
+              />
               <MetaItem
                 label="Domínio"
                 value={DOMINIO_LABEL[demanda.dominio] ?? demanda.dominio}

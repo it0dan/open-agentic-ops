@@ -17,6 +17,14 @@ _Avoid_: fonte, canal, gatilho
 Atributo opcional e genérico de uma origem (não exclusivo de Estratégia) que refina o tipo de demanda dentro da mesma origem — ex.: Estratégia com `nova_funcionalidade`/`melhoria`. Modelado como campo adicional (`origem_subtipo`), não como nova origem, para preservar as 4 origens canônicas do glossário.
 _Avoid_: nova origem, categoria de origem
 
+**Título**:
+Resumo curto de uma demanda, capturado na criação (modal Nova demanda). Obrigatório no console (botão de envio desabilitado sem título); na API o campo é opcional. Facilita a triagem visual no board sem depender do texto completo.
+_Avoid_: nome, headline, subject
+
+**Prioridade**:
+Prioridade de negócio capturada na criação da demanda (alta/média/baixa), independente da ambiguidade técnica. Não é derivada da classificação do Intake — expressa urgência percebida por quem cria a demanda.
+_Avoid_: severidade, impacto, peso
+
 **Ambiguidade**:
 Classificação dada pelo Intake Agent a cada item, em baixa ou alta. Baixa + precedente → Intake rascunha a spec; alta → escala ao FDE.
 _Avoid_: complexidade, dificuldade, incerteza

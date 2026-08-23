@@ -24,7 +24,36 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.** 8 commits aguardando push para `origin/main`.
 
-**Validação (estado atual):** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **12/12 passed**; smoke test das rotas (`/login`, `/dashboard`, `/tasks`, `/graph`, `/audit`, detalhe → 200; `/board` → 307 redirect; `/registry` e `/intake` → 404).
+**Validação (estado atual):** `poetry run pytest` → **40 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **14/14 passed**.
+
+## Trabalho desta sessão (campos estruturados na criação de demanda)
+
+**Tarefa:** destrinchar a criação de demanda (hoje só `origem` + `texto`) e adicionar campos que façam sentido para a triagem e o contexto de negócio. Decisões alinhadas com o usuário: escopo = **Título + origem_subtipo + prioridade**; `origem_subtipo` como **campo adicional** (fecha a pendência Q1, preserva as 4 origens); **prioridade de negócio capturada** (independente da ambiguidade técnica).
+
+**Backend (Python):**
+- `src/open_agentic_ops/state/__init__.py` — novos types `OrigemSubtipo` (pedido/incidente/norma/instrucao_normativa/nova_funcionalidade/melhoria/bug/performance) e `Prioridade` (alta/media/baixa); `BoardState` ganha `origem_subtipo`, `prioridade`, `titulo`.
+- `src/open_agentic_ops/nodes/intake_node.py` — nó Intake propaga `origem_subtipo`, `prioridade` (default `media`) e `titulo` no retorno (pass-through; **não** influencia a heurística de classificação).
+- `api/main.py` — `IntakeBody` ganha `origem_subtipo`, `prioridade`, `titulo` (todos opcionais); `intake_endpoint` repassa; `_resumo`/`_detalhe` expõem os três campos.
+
+**Frontend (Next.js):**
+- `frontend/lib/mock-data.ts` — types `OrigemSubtipo`/`Prioridade`; campos na interface `Demanda`; labels `ORIGEM_SUBTIPO_LABEL`, `PRIORIDADE_LABEL` e presets `ORIGEM_SUBTIPOS` por origem.
+- `frontend/lib/api.ts` — `IntakePayload` com `origem_subtipo`, `prioridade`, `titulo`.
+- `frontend/components/nova-demanda-modal.tsx` — **redesenhado como Dialog central largo e redimensionável** (glassmorphism): campos **Título** (obrigatório), **Origem** (segmented control com ícones, default **regulatório**), **Subtipo** (cards de progressive disclosure, default primeiro da origem), **Prioridade** (cards destacados, default **média**) e **Descrição** (textarea menor, sem barra de rolagem). **Todos os campos obrigatórios** — botão de envio desabilitado sem título e descrição. Microcopy contextual em cada campo. Substitui o modal central pequeno com comboboxes.
+- `frontend/components/resizable-dialog.tsx` — novo componente `ResizableDialogContent` que permite **redimensionar o modal** arrastando o handle no canto inferior-direito (pointer events, limites min/max de largura e altura). O elemento é **centralizado** (`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`), então permanece centralizado ao redimensionar (o translate é aplicado ao próprio elemento que muda de tamanho, não ao pai).
+- `frontend/components/segmented-control.tsx` — novo componente reutilizável de segmented control (rótulos + ícones, `role="radiogroup"`), usado para Origem no lugar de combobox.
+- `frontend/components/column-tasks.tsx` e `frontend/app/(dashboard)/tasks/page.tsx` — card/lista exibem `titulo || spec`.
+- `frontend/app/(dashboard)/tasks/[threadId]/page.tsx` — painel de metadados ganha **Título** e **Subtipo**; helper `prioridade` usa o campo capturado com fallback para a derivação por ambiguidade.
+
+**Testes:** `tests/test_api.py` — 2 novos testes (roundtrip dos campos estruturados no intake/detalhe; defaults quando omitidos). `frontend/components/nova-demanda-modal.test.tsx` — 4 testes (renderiza os campos; origem default regulatório e troca de subtipos; envia payload com título/subtipo/prioridade; botão desabilitado sem título).
+
+**Docs:** `CONTEXT.md` — termos `Título` e `Prioridade` adicionados ao glossário (Título marcado como obrigatório no console). `docs/adr/0020-structured-demand-creation-fields.md` — ADR novo registrando a decisão (fecha a pendência Q1), atualizado com as decisões finais (todos os campos obrigatórios no console, origem default regulatório, prioridade default média).
+
+**Validação:** `poetry run pytest` → **40 passed**; `poetry run ruff check .` → limpo; `npm run lint` → limpo; `npm run build` → OK; `npm test` → **16/16 passed**.
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `src/open_agentic_ops/state/__init__.py`, `nodes/intake_node.py`, `api/main.py`, `tests/test_api.py`, `frontend/lib/mock-data.ts`, `frontend/lib/api.ts`, `frontend/components/nova-demanda-modal.tsx`, `frontend/components/column-tasks.tsx`, `frontend/app/(dashboard)/tasks/page.tsx`, `frontend/app/(dashboard)/tasks/[threadId]/page.tsx`, `CONTEXT.md`, `HANDOFF.md`
+- Novos: `frontend/components/nova-demanda-modal.test.tsx`, `frontend/components/segmented-control.tsx`, `frontend/components/resizable-dialog.tsx`, `docs/adr/0020-structured-demand-creation-fields.md`
 
 ## Trabalho desta sessão (encerramento)
 
@@ -248,7 +277,7 @@ Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via gril
 | `README.md` | Porta de entrada |
 | `CONTEXT.md` | Glossário (board, origem, ambiguidade, Guia, worktree, gate, FDE, PII, grafo, loop, resume, redação PII) |
 | `ARCHITECTURE.md` | Visão estrutural C4 (contexto, containers, componentes do grafo, board, retomada do FDE) |
-| `docs/adr/` | 19 ADRs (template Nygard) — 0015–0019 da rodada de definição da oferta |
+| `docs/adr/` | 20 ADRs (template Nygard) — 0015–0019 da rodada de definição da oferta, 0020 da criação de demanda |
 | `Inicio/HANDOFF-squad-agentica.md` | Handoff original trazido e atualizado com as decisões |
 | `openspec/changes/squad-open-agentic-ops/` | Pipeline SDD/SPDD completo (arquivado) |
 | `openspec/changes/fde-console/` | Change do console do FDE (37/37 tasks, aguardando archive) |
@@ -278,7 +307,9 @@ Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via gril
 | `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Tasks/Graph/Audit |
 | `frontend/app/(dashboard)/tasks/page.tsx` | Tela de Tasks (ex-Registry/Board): KPIs, filtros por facet, toggle Lista/Colunas, cards, botão "Nova demanda" (modal) |
 | `frontend/app/(dashboard)/tasks/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **painel de autoria de spec** (status `aguardando_autoria`), metadados sticky |
-| `frontend/components/nova-demanda-modal.tsx` | Modal de criação de demanda (Dialog shadcn: origem + texto) → `POST /intake` |
+| `frontend/components/nova-demanda-modal.tsx` | Dialog central redimensionável de criação de demanda (Título, Origem, Subtipo, Prioridade, Descrição) → `POST /intake` |
+| `frontend/components/segmented-control.tsx` | Segmented control reutilizável (rótulos + ícones) para Origem |
+| `frontend/components/resizable-dialog.tsx` | `ResizableDialogContent` — modal redimensionável via handle de arraste (canto inferior-direito) |
 | `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/tasks`) |
 | `frontend/app/(dashboard)/graph/page.tsx` | Página `/graph` full-viewport com `LoopCanvas` |
 | `frontend/app/(dashboard)/loops/page.tsx` | **Redirect de compatibilidade** (307 → `/graph`) |
@@ -299,6 +330,7 @@ Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via gril
 | `docs/adr/0017-conditional-gate-routing-and-deploy-node.md` | ADR roteamento condicional dos gates + nó de deploy |
 | `docs/adr/0018-eval-gate-two-layer-langsmith.md` | ADR Eval gate em duas camadas LangSmith (supera 0013) |
 | `docs/adr/0019-sre-agent-resultado-monitoramento-and-create-demand-port.md` | ADR SRE real (ResultadoMonitoramento + port criar_demanda) |
+| `docs/adr/0020-structured-demand-creation-fields.md` | ADR campos estruturados na criação de demanda (titulo, origem_subtipo, prioridade) — fecha a pendência Q1 |
 
 ## Skills instaladas (em `~/.agents/skills/`)
 

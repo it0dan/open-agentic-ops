@@ -80,7 +80,7 @@ export default function RegistryPage() {
   }, [visao]);
 
   const filtradas = useMemo(() => {
-    return demandas.filter((d) => {
+    const resultado = demandas.filter((d) => {
       const q = busca.toLowerCase();
       const matchBusca =
         !q || d.spec.toLowerCase().includes(q) || d.thread_id.includes(q);
@@ -91,6 +91,11 @@ export default function RegistryPage() {
       const matchDominio =
         !selecionados.dominio?.size || selecionados.dominio.has(d.dominio);
       return matchBusca && matchOrigem && matchStatus && matchDominio;
+    });
+    return resultado.sort((a, b) => {
+      const ta = a.criado_em ?? "";
+      const tb = b.criado_em ?? "";
+      return tb.localeCompare(ta);
     });
   }, [demandas, busca, selecionados]);
 

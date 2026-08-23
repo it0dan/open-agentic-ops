@@ -78,6 +78,7 @@ export interface Demanda {
   erros?: number;
   eventos?: EventoLoop[];
   atualizado_em?: string;
+  criado_em?: string;
 }
 
 export const demandasMock: Demanda[] = [

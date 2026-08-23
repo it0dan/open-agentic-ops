@@ -154,6 +154,7 @@ def create_app() -> FastAPI:
 
 
 def _resumo(thread_id: str, snap: BoardState) -> dict:
+    cls = snap.get("classificacao_intake") or {}
     return {
         "thread_id": thread_id,
         "origem": snap.get("origem"),
@@ -161,7 +162,9 @@ def _resumo(thread_id: str, snap: BoardState) -> dict:
         "spec_autor": snap.get("spec_autor"),
         "dominio": snap.get("domino"),
         "status": snap.get("status"),
+        "spec": snap.get("spec"),
         "spec_resumo": (snap.get("spec") or "")[:200],
+        "criado_em": cls.get("timestamp"),
     }
 
 

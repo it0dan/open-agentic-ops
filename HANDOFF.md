@@ -24,7 +24,9 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.**
 
-**Validação (estado atual):** `poetry run pytest` → **53 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`, `/auditoria/ambigua`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
+**Sessão atual (Feature Agent — Review estruturado):** decisões 3–7 da seção 7 implementadas como Camada 1 (harness + testes): `FeedbackReview` estruturado (`motivo` + `ambiguidade_sugerida`), `review_node` com contexto real e caminho para discordar, payload do HITL com `review_discordancia` + motivos, `origem_discordancia` na Audit, docstring do Architecture corrigido. Change OpenSpec `review-discordancia-estruturada` arquivado em `openspec/archive/2026-08-23-review-discordancia-estruturada/`. **68 passed, ruff limpo.**
+
+**Validação (estado atual):** `poetry run pytest` → **68 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`, `/auditoria/ambigua`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
 
 ## Trabalho desta sessão (Intake Agent — decisão 1: fallback de ambiguidade)
 
@@ -609,6 +611,38 @@ Working tree **com mudanças não commitadas** (decisão 2 implementada, ainda n
 - Novos (untracked): `docker-compose.yml`, `docs/adr/0021-use-pgvector-for-semantic-precedent-search.md`, `docs/sdd/feature-intakes/intake-similaridade-semantica.md`, `openspec/changes/`, `src/open_agentic_ops/embeddings/`, `src/open_agentic_ops/similaridade/`, `tests/test_embeddings.py`, `tests/test_similaridade.py`.
 - Branch: `main`; último commit `e50f350`.
 
+## Trabalho desta sessão (Feature Agent — decisões 3–7: Review estruturado + discordância na Audit)
+
+**Tarefa:** implementar as decisões 3–7 da seção 7 do documento de definições (Review Agent), como Camada 1 (harness + testes), seguindo o playbook SDD/SPDD. **Implementado, validado e arquivado.**
+
+### ✅ Concluído
+
+**Feature Intake Brief** — `docs/sdd/feature-intakes/review-discordancia-estruturada.md` (template do projeto).
+
+**Change OpenSpec `review-discordancia-estruturada`** — criado via CLI `openspec`, **validado** (`openspec validate --changes` → valid) e **arquivado** em `openspec/archive/2026-08-23-review-discordancia-estruturada/`:
+- `proposal.md` — por que estruturar a discordância do Review.
+- `design.md` — decisões D1–D5 (FeedbackReview estruturado, contexto real, payload HITL, origem_discordancia, docstring Architecture).
+- `specs/review-discordancia/spec.md` — 5 requirements (ADDED), sincronizada em `openspec/specs/review-discordancia/spec.md`.
+- `tasks.md` — 7 grupos, 18 tasks (todas completas).
+
+**Implementação (Apply):**
+- `state/__init__.py` — `FeedbackReview` ganhou `motivo: str | None` e `ambiguidade_sugerida: Ambiguidade | None`; novo tipo `OrigemDiscordancia = Literal["review", "fde_auditoria", "fde_hitl"]`; `BoardState` ganhou `origem_discordancia`.
+- `review_node.py` — reescrito: `_revisar(contexto)` recebe branch + diff + spec + checklist; fallback determinístico detecta PII em claro no resultado (via `detectar_pii`) quando o checklist exige "sem PII" e produz discordância estruturada (`motivo` + `ambiguidade_sugerida`); `make_review_node` aceita `revisar` injetável; registra `origem_discordancia: "review"` quando discorda.
+- `hitl_gate.py` — payload do `interrupt()` ganha `review_discordancia: True` + `review_motivos` quando há discordância no lote.
+- `architecture_node.py` — docstring corrigido (removida a promessa de "pausa e escala ao FDE"; papel puramente consultivo).
+- `graph/__init__.py` — `build_graph` aceita `revisar` injetável (DI para testes).
+- `api/main.py` — `create_app` aceita `revisar` injetável; `_detalhe` expõe `origem_discordancia`; `/auditoria` expõe `origem_discordancia` + `discordancias_review` quando há discordância.
+
+**Testes:** `tests/test_review_discordancia.py` — 7 testes (review discorda com motivo/ambiguidade, review concorda sem motivo, callable injetado, payload HITL com/sem discordância, origem_discordancia na Audit, docstring Architecture). **68 passed, ruff limpo.**
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `api/main.py`, `src/open_agentic_ops/gates/hitl_gate.py`, `src/open_agentic_ops/graph/__init__.py`, `src/open_agentic_ops/nodes/architecture_node.py`, `src/open_agentic_ops/nodes/review_node.py`, `src/open_agentic_ops/state/__init__.py`, `HANDOFF.md` (esta seção).
+- Novos: `docs/sdd/feature-intakes/review-discordancia-estruturada.md`, `openspec/archive/2026-08-23-review-discordancia-estruturada/`, `openspec/specs/review-discordancia/`, `tests/test_review_discordancia.py`.
+
+### Próxima ação recomendada
+Commitar (conventional commits coesos) e pushar, incluindo o commit pendente `dc41b7d` (similaridade pgvector). Depois, resta a decisão 2 da seção 7 (Architecture Agent como subagent no loop do Feature Agent) e o item 7 dos próximos passos (multi-tenancy, ADR-0015).
+
 ## Próximos passos
 
 > **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** **Intake Agent (decisão 1, fallback de ambiguidade): change OpenSpec `intake-fallback-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/` (precedência alta→baixa→fallback `alta`, lista `baixa_ambiguidade`, 48 passed).** **Intake Agent (decisão 3, PII financeiro): change OpenSpec `intake-pii-financeiro` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-pii-financeiro/` (CHAVE_PIX UUID + CONTA_BANCARIA, 51 passed).** **Intake Agent (decisão 4, novo motivo de discordância na Audit): change OpenSpec `intake-audit-motivo-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/` (contador 'ambíguo demais para keyword' via `POST /auditoria/ambigua`, 53 passed).** **Intake Agent (decisão 2, similaridade semântica pgvector): change OpenSpec `intake-similaridade-semantica` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-similaridade-semantica/` (Sentence-Transformers local + pgvector, `make_intake_node` com DI, extra `langgraph-checkpoint-postgres@^2.0.25` resolvido, 61 passed).** Tudo commitado e pusheado para `origin/main`.
@@ -623,6 +657,7 @@ Working tree **com mudanças não commitadas** (decisão 2 implementada, ainda n
 8. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
 9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
 10. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
+11. **Feature Agent — decisão 2 da seção 7 (Architecture Agent como subagent no loop do Feature):** o Feature Agent decide durante o loop se a spec toca contrato externo e invoca o Architecture como chamada isolada tipo subagent. Mais profunda, mexe no loop do Feature Agent; fica para outra rodada. As decisões 3–7 da seção 7 (Review estruturado + discordância na Audit) já foram implementadas nesta sessão.
 
 ## Fontes-chave
 

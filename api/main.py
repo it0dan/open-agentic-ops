@@ -153,18 +153,64 @@ def create_app() -> FastAPI:
     return app
 
 
+_FLUXO_STATUS = [
+    "triado",
+    "aguardando_autoria",
+    "spec_pronta",
+    "em_implementacao",
+    "em_revisao",
+    "aguardando_hitl",
+    "aprovado",
+    "em_eval",
+    "deployado",
+    "monitorado",
+]
+
+_AGENTE_POR_STATUS = {
+    "triado": "Intake Agent",
+    "aguardando_autoria": "FDE",
+    "spec_pronta": "Feature Agent",
+    "em_implementacao": "Feature Agent",
+    "em_revisao": "Review Agent",
+    "aguardando_hitl": "FDE",
+    "aprovado": "Platform Agent",
+    "em_eval": "Eval Gate",
+    "deployado": "Platform Agent",
+    "monitorado": "SRE Agent",
+}
+
+
+def _progresso(status: str | None) -> int:
+    if status is None:
+        return 0
+    idx = _FLUXO_STATUS.index(status) if status in _FLUXO_STATUS else 0
+    return round(idx / (len(_FLUXO_STATUS) - 1) * 100)
+
+
+def _agente_atual(status: str | None) -> str | None:
+    return _AGENTE_POR_STATUS.get(status or "")
+
+
+def _erros(snap: BoardState) -> int:
+    return sum(1 for wt in snap.get("worktrees", []) if wt.get("status") == "falhou")
+
+
 def _resumo(thread_id: str, snap: BoardState) -> dict:
     cls = snap.get("classificacao_intake") or {}
+    status = snap.get("status")
     return {
         "thread_id": thread_id,
         "origem": snap.get("origem"),
         "ambiguidade": snap.get("ambiguidade"),
         "spec_autor": snap.get("spec_autor"),
         "dominio": snap.get("domino"),
-        "status": snap.get("status"),
+        "status": status,
         "spec": snap.get("spec"),
         "spec_resumo": (snap.get("spec") or "")[:200],
         "criado_em": cls.get("timestamp"),
+        "progresso": _progresso(status),
+        "agente_atual": _agente_atual(status),
+        "erros": _erros(snap),
     }
 
 

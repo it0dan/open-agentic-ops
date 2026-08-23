@@ -136,23 +136,35 @@ Operação do ciclo de vida de Open Finance: normas regulatórias, demandas de c
 ## Current recommended next feature
 
 ```txt
-fde-console
+feature-agent-loop
 ```
 
 Expected briefing location:
 
 ```txt
-docs/sdd/feature-intakes/fde-console.md
+docs/sdd/feature-intakes/feature-agent-loop.md
 ```
 
 Feature intention:
 
-Console do FDE (painel de operação da squad): camada de API FastAPI (`api/`) + console web Next.js (`frontend/`) para ver o board, aprovar/rejeitar no HITL, injetar demanda manualmente e auditar/corrigir a heurística do Intake. Change concluído e arquivado em `openspec/archive/2026-08-22-fde-console/` (37/37 tasks).
+Loop goal-based do Feature Agent (ADR-0016): transformar o `feature_node.py` de chamada única em loop verificável (goal = spec implementada + testes passando + lint limpo), com test/lint como ferramenta in-loop, teto de iterações, PII como hook determinístico e Guia com campo de ferramentas/checklist. É o achado central da definição da oferta (`Inicio/open-agentic-ops-definicao-oferta (3).md`) e destrava Architecture dinâmico e Review real.
 
 Out of scope para esta feature:
 
-- Autenticação externa (OIDC) — auth mockada no MVP
-- Streaming real (SSE/WebSocket) — polling no MVP
-- RAG/vector database
-- Infra Postgres/Redis em produção (dev usa Sqlite/InMemory)
-- Dados reais de cliente
+- Integração com LLM/ferramentas reais (Sensedia AI Gateway, MCP git/test) — camada 2, depende de infra
+- Checklists ricos por domínio (browser, Lighthouse, teste de contrato) — evolução posterior
+- Multi-tenancy (ADR-0015) — frente paralela, ADR primeiro
+- Eval gate real (ADR-0018) — depende de LangSmith + LLM-as-judge
+
+## Decisões de arquitetura registradas (rodada de definição da oferta)
+
+Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via grilling (30 decisões, Q1–Q30). Decisões de arquitetura registradas como ADRs em `docs/adr/`:
+
+- **ADR-0015** — multi-tenancy e isolamento por cliente (tenant_id no BoardState, claim JWT Keycloak, FDE por tenant)
+- **ADR-0016** — loop goal-based do Feature Agent (Loop Engineering)
+- **ADR-0017** — roteamento condicional dos gates (HITL/Eval) + nó de deploy
+- **ADR-0018** — Eval gate em duas camadas LangSmith (online + offline); supera ADR-0013
+- **ADR-0019** — SRE real (ResultadoMonitoramento + port criar_demanda)
+- **ADR-0005** — atualizado: notificação por polling (~4s), push Redis/SSE superado
+
+Decisões de domínio registradas no `CONTEXT.md` (termo `origem_subtipo`).

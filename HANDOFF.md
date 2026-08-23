@@ -141,6 +141,20 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **E8:** **Mock populado** — 23 demandas cobrindo todos os status/origens/domínios/ambiguidades.
 - **E9:** **Nomenclatura alinhada ao CONTEXT.md** — Loop→Graph (`/loops`→`/graph`), Auditoria→Audit (`/auditoria`→`/audit`), Kanban→Colunas (`kanban-board.tsx`→`column-board.tsx`, toggle "Lista/Colunas"); redirects 307 de compatibilidade; jornada do FDE completada (autoria de spec no Intake via `POST /resume`, HITL gate no Graph, Audit como calibração).
 
+### Rodada de definição da oferta (grilling — 30 decisões, Q1–Q30)
+
+Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via grilling (7 rodadas, ordem do documento: Origens → Intake → Feature → Eval/Deploy → HITL → SRE → Board). Todas as decisões `[DECISÃO PENDENTE]` e tensões descobertas ao cruzar com o código foram resolvidas. **Nenhum código alterado — apenas registro em docs.**
+
+- **Origens (§5):** `origem_subtipo` como campo genérico (Q1); vínculo demanda↔cliente = `tenant_id` (Q2, deferido p/ §11); canais de Cliente adiados p/ Fase 2 com PII uniforme (Q3); detecção regulatória = spike pendente (Q4); Audit do SRE deferida (Q5).
+- **Intake (§6):** fallback→alta **acoplado** à similaridade semântica por precedente (Q6/Q7 — não isolado, senão quebra o caso de baixa mais comum); PII chave Pix + conta/agência com regex conservador agora (Q8); novo motivo de discordância na Audit deferido (Q9).
+- **Feature (§7):** loop goal-based em duas camadas — harness agora + integração real depois (Q10); loop mínimo (test/lint) primeiro (Q11); PII como hook determinístico agora (Q12); Architecture dinâmico deferido (Q13); Review estrutural agora + contexto real deferido (Q14).
+- **Eval/Deploy (§8):** roteamento condicional + nó deploy stub agora (Q15); risco de loop de re-aprovação aceito (Q16); Eval real deferido, esqueleto das duas camadas agora (Q17); tudo volta ao `hitl` (Q18).
+- **HITL (§9):** `Status` ganha `rejeitado` + `pending()` inclui `aguardando_autoria` agora (Q19); `com_ressalvas` no estado/API agora, botão depois (Q20); `impacta_classificacao` marcado pelo FDE, deferido (Q21); ADR-0005 atualizado (Q22).
+- **SRE (§10):** `ResultadoMonitoramento` estruturado agora (Q23); port `criar_demanda` agora (Q24); auditoria estendida deferida (Q25); limitação de cobertura registrada (Q26).
+- **Board (§11):** multi-tenancy como frente paralela, ADR primeiro (Q27); escopo do ADR (Q28); filtro de tenant no console deferido (Q29); `tenant_id` não implementado isolado (Q30).
+
+**Artefatos criados nesta rodada:** ADRs 0015–0019, ADR-0005 atualizado, ADR-0013 marcado como superseded, `CONTEXT.md` (termo `origem_subtipo`), `openspec/project.md` (próxima feature + decisões registradas).
+
 ## Artefatos criados
 
 | Artefato | Conteúdo |
@@ -150,7 +164,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `README.md` | Porta de entrada |
 | `CONTEXT.md` | Glossário (board, origem, ambiguidade, Guia, worktree, gate, FDE, PII, grafo, loop, resume, redação PII) |
 | `ARCHITECTURE.md` | Visão estrutural C4 (contexto, containers, componentes do grafo, board, retomada do FDE) |
-| `docs/adr/` | 14 ADRs (template Nygard) |
+| `docs/adr/` | 19 ADRs (template Nygard) — 0015–0019 da rodada de definição da oferta |
 | `Inicio/HANDOFF-squad-agentica.md` | Handoff original trazido e atualizado com as decisões |
 | `openspec/changes/squad-open-agentic-ops/` | Pipeline SDD/SPDD completo (arquivado) |
 | `openspec/changes/fde-console/` | Change do console do FDE (37/37 tasks, aguardando archive) |
@@ -192,6 +206,11 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `frontend/components/ui/` | Componentes base shadcn (inclui popover, checkbox, sheet, dialog, progress, etc.) |
 | `.opencode/skills/frontend-sensedia/SKILL.md` | Skill de frontend (Guia): brand book Sensedia + padrão shadcn/ui |
 | `docs/adr/0014-api-layer-and-fde-console.md` | ADR da camada de API + console (radius, dark-first, glassmorphism) |
+| `docs/adr/0015-multi-tenancy-and-client-isolation.md` | ADR multi-tenancy e isolamento por cliente (tenant_id, Keycloak, FDE por tenant) |
+| `docs/adr/0016-goal-based-feature-agent-loop.md` | ADR loop goal-based do Feature Agent (Loop Engineering) |
+| `docs/adr/0017-conditional-gate-routing-and-deploy-node.md` | ADR roteamento condicional dos gates + nó de deploy |
+| `docs/adr/0018-eval-gate-two-layer-langsmith.md` | ADR Eval gate em duas camadas LangSmith (supera 0013) |
+| `docs/adr/0019-sre-agent-resultado-monitoramento-and-create-demand-port.md` | ADR SRE real (ResultadoMonitoramento + port criar_demanda) |
 
 ## Skills instaladas (em `~/.agents/skills/`)
 
@@ -248,12 +267,15 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Registry, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: refactor de polling (hook `useDemandasPolling`) + rename Board→Registry + docs — CONCLUÍDO, testes/lint/build verdes (30 pytest + 15 vitest), tudo commitado e pusheado.**
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Registry, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: revisão da definição da oferta (`Inicio/open-agentic-ops-definicao-oferta (3).md`) via grilling — 30 decisões fechadas (Q1–Q30), registradas em ADRs 0015–0019 + ADR-0005 atualizado + CONTEXT.md + openspec/project.md. Nenhum código alterado.**
 
-1. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
-2. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
-3. **Definir os Guias concretos** (skills backend/frontend) para o nó Feature Agent.
-4. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
+1. **Loop goal-based do Feature Agent (ADR-0016)** — próxima feature recomendada (`feature-agent-loop`). Harness do loop (goal = test/lint passando, teto de iterações, PII como hook determinístico, Guia com campo de ferramentas) implementável agora com stubs; integração real (LLM + MCP) depende de infra. É o achado central da definição da oferta e destrava Architecture dinâmico e Review real.
+2. **Roteamento condicional dos gates (ADR-0017)** — corrigir o bug "gates não gateiam": arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganha `rejeitado` + `pending()` inclui `aguardando_autoria`.
+3. **SRE real (ADR-0019)** — `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API (fecha o loop ADR-0010).
+4. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra.
+5. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE.
+6. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+7. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
 
 ## Fontes-chave
 

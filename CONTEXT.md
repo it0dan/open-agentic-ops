@@ -13,6 +13,10 @@ _Nota de UI_: no console do FDE, a tela que lista as demandas chama-se **Registr
 Uma das 4 entradas que alimentam o board: Cliente, Regulatório/Informes, Estratégia/Sensedia, SRE (produção). Cada item do board é tagueado pela origem.
 _Avoid_: fonte, canal, gatilho
 
+**Origem subtipo**:
+Atributo opcional e genérico de uma origem (não exclusivo de Estratégia) que refina o tipo de demanda dentro da mesma origem — ex.: Estratégia com `nova_funcionalidade`/`melhoria`. Modelado como campo adicional (`origem_subtipo`), não como nova origem, para preservar as 4 origens canônicas do glossário.
+_Avoid_: nova origem, categoria de origem
+
 **Ambiguidade**:
 Classificação dada pelo Intake Agent a cada item, em baixa ou alta. Baixa + precedente → Intake rascunha a spec; alta → escala ao FDE.
 _Avoid_: complexidade, dificuldade, incerteza

@@ -8,10 +8,16 @@ import { Progress } from "@/components/ui/progress";
 import {
   DOMINIO_LABEL,
   ORIGEM_LABEL,
+  PRIORIDADE_LABEL,
   STATUS_LABEL,
   type Demanda,
   type Status,
 } from "@/lib/mock-data";
+
+function prioridade(d: Demanda): string {
+  if (d.prioridade) return PRIORIDADE_LABEL[d.prioridade];
+  return d.ambiguidade === "alta" ? "Alta" : "Baixa";
+}
 
 const FLUXO: Status[] = [
   "triado",
@@ -39,6 +45,19 @@ function ColumnCard({ demanda }: { demanda: Demanda }) {
         </Badge>
         <Badge variant="outline" className="text-[10px] capitalize">
           {DOMINIO_LABEL[demanda.dominio]}
+        </Badge>
+        <Badge
+          variant="outline"
+          className={
+            demanda.ambiguidade === "alta"
+              ? "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400"
+              : "text-[10px]"
+          }
+        >
+          {demanda.ambiguidade}
+        </Badge>
+        <Badge variant="outline" className="text-[10px]">
+          {prioridade(demanda)}
         </Badge>
       </div>
       <p className="mt-2 line-clamp-2 text-sm font-medium">

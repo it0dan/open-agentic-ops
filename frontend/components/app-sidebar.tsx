@@ -31,7 +31,7 @@ import {
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tasks", label: "Board", icon: ClipboardList },
+  { href: "/registry", label: "Registry", icon: ClipboardList },
   { href: "/graph", label: "Graph", icon: Activity },
   { href: "/intake", label: "Intake", icon: Inbox },
   { href: "/audit", label: "Audit", icon: SearchCheck },

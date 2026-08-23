@@ -6,7 +6,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Grafo LangGraph implementado e versionado** (change `squad-open-agentic-ops`, 24/24 tasks, arquivado em `openspec/archive/2026-08-22-squad-open-agentic-ops/`). O repo contém a fundação documental (arquitetura, ADRs, glossário, pipeline SDD/SPDD) e o **código Python funcional** da squad: scaffold Poetry, portas hexagonais, modelo de estado, persistência (checkpointer = board), redação PII, nós e gates, montagem do grafo, observabilidade e testes. **Commitado e pusheado** para `origin/main` (commit `1f2ec8d`).
 
-**Change `fde-console` (console do FDE):** proposta, design, spec e tasks criados (37 tasks). **Grupos 1–7 concluídos (37/37):** runtime (heurística mutável, `classificacao_intake`, BoardView), API FastAPI (`api/main.py`), console Next.js, telas, integração console↔API, skill `frontend-sensedia` e testes/validação (incluindo ADR-0014). **Redesign visual completo (dark-first + glassmorphism) concluído.**
+**Change `fde-console` (console do FDE):** proposta, design, spec e tasks criados (37 tasks). **Grupos 1–7 concluídos (37/37):** runtime (heurística mutável, `classificacao_intake`, BoardView), API FastAPI (`api/main.py`), console Next.js, telas, integração console↔API, skill `frontend-sensedia` e testes/validação (incluindo ADR-0014). **Redesign visual completo (dark-first + glassmorphism) concluído.** **Arquivado em `openspec/archive/2026-08-22-fde-console/` e pusheado para `origin/main`.**
 
 **Evolução do console (sessões recentes) — concluída e validada:**
 - **Login simétrico + guard na raiz:** login centralizado simetricamente, redirect pós-login para `/dashboard`; rota raiz `/` com guard client (`components/home-redirect.tsx`) → `/dashboard` ou `/login`.
@@ -20,7 +20,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **`/loops` interativo:** toggle Vertical removido (sempre horizontal); **nós arrastáveis** com persistência em `localStorage` (`fde-loop-node-positions`) + botão "Resetar layout"; arestas fixas pela ordem lógica; **CSS vars do React Flow** (`--xy-*`) sobrescritas para tema claro/dark; **drawer do agente completo** (histórico de eventos cronológico, duração + início, link para demanda). `LoopStage` estendido com `eventos`/`inicio`; `lib/loop-stages.ts` populado com eventos mock por etapa. Fix do build: `useReactFlow()` exige `ReactFlowProvider` → separado `LoopCanvasInner` (hook) do wrapper exportado `LoopCanvas` (provider).
 - **Mock populado:** `lib/mock-data.ts` agora tem **23 demandas** (3 originais + 20 novas), cobrindo todos os status do `FLUXO`, origens (cliente/regulatorio/estrategia/sre), domínios (backend/frontend/ambos) e ambiguidades.
 
-**Validação:** `poetry run pytest` → 28 passed; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **12/12 passed**; smoke test das rotas (`/login`, `/dashboard`, `/tasks`, `/loops`, detalhe → 200; `/board` e `/board/[id]` → 307 redirect).
+**Validação (estado atual):** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **15/15 passed**; smoke test das rotas (`/login`, `/dashboard`, `/tasks`, `/graph`, `/audit`, detalhe → 200; `/board`, `/loops`, `/auditoria` → 307 redirect).
 
 ## Trabalho desta sessão (encerramento)
 
@@ -112,6 +112,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - **E6:** **Dashboard** — eventos expandidos por padrão, card do Loop clicável → `/loops`, seção "Últimas demandas".
 - **E7:** **`/loops` interativo** — nós arrastáveis (persistência localStorage + reset), sempre horizontal, controles com tema do design system, drawer do agente com histórico completo + live update (polling 4s).
 - **E8:** **Mock populado** — 23 demandas cobrindo todos os status/origens/domínios/ambiguidades.
+- **E9:** **Nomenclatura alinhada ao CONTEXT.md** — Loop→Graph (`/loops`→`/graph`), Auditoria→Audit (`/auditoria`→`/audit`), Kanban→Colunas (`kanban-board.tsx`→`column-board.tsx`, toggle "Lista/Colunas"); redirects 307 de compatibilidade; jornada do FDE completada (autoria de spec no Intake via `POST /resume`, HITL gate no Graph, Audit como calibração).
 
 ## Artefatos criados
 
@@ -143,16 +144,18 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `frontend/components/home-redirect.tsx` | Guard client: logado → `/dashboard`, senão → `/login` |
 | `frontend/app/login/page.tsx` | Login split-screen simétrico, redirect → `/dashboard` |
 | `frontend/app/(dashboard)/layout.tsx` | Layout do dashboard (sidebar + topbar) usando `ContentContainer` |
-| `frontend/components/content-container.tsx` | Container que remove `max-w-7xl` na rota `/loops` (full-viewport) |
-| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Demandas/Loops/Intake/Auditoria |
-| `frontend/app/(dashboard)/tasks/page.tsx` | Tela de Demandas (ex-Board): KPIs, filtros por facet, toggle Lista/Kanban, cards |
+| `frontend/components/content-container.tsx` | Container que remove `max-w-7xl` na rota `/graph` (full-viewport) |
+| `frontend/components/app-sidebar.tsx` | Sidebar com Dashboard/Demandas/Graph/Intake/Audit |
+| `frontend/app/(dashboard)/tasks/page.tsx` | Tela de Demandas (ex-Board): KPIs, filtros por facet, toggle Lista/Colunas, cards |
 | `frontend/app/(dashboard)/tasks/[threadId]/page.tsx` | Detalhe da demanda: ciclo de vida ao vivo, tabs, painel HITL, **metadados sticky** |
 | `frontend/app/(dashboard)/board/page.tsx` + `[threadId]/page.tsx` | **Redirects de compatibilidade** (307 → `/tasks`) |
-| `frontend/app/(dashboard)/loops/page.tsx` | Página `/loops` full-viewport com `LoopCanvas` |
+| `frontend/app/(dashboard)/graph/page.tsx` | Página `/graph` full-viewport com `LoopCanvas` |
+| `frontend/app/(dashboard)/loops/page.tsx` | **Redirect de compatibilidade** (307 → `/graph`) |
+| `frontend/app/(dashboard)/auditoria/page.tsx` | **Redirect de compatibilidade** (307 → `/audit`) |
 | `frontend/components/filter-bar.tsx` | Filtros por facet (3 dropdowns popover+checkbox) |
-| `frontend/components/kanban-board.tsx` | Kanban read-only, 9 colunas auto-colapsáveis, cards clicáveis |
-| `frontend/components/loop-canvas.tsx` | Grafo React Flow interativo (nós arrastáveis, reset, drawer do agente) |
-| `frontend/components/loop-status.tsx` | Card do Loop clicável → `/loops`; define `LoopStage` (com `eventos`/`inicio`) |
+| `frontend/components/column-board.tsx` | Colunas read-only (ex-Kanban), 9 colunas auto-colapsáveis, cards clicáveis |
+| `frontend/components/loop-canvas.tsx` | Grafo React Flow interativo (nós arrastáveis, reset, drawer do agente, HITL gate) |
+| `frontend/components/loop-status.tsx` | Card do Loop clicável → `/graph`; define `LoopStage` (com `eventos`/`inicio`) |
 | `frontend/lib/loop-stages.ts` | `montarStages` (extraído) com eventos mock por etapa |
 | `frontend/lib/mock-data.ts` | **23 demandas** mock (3 originais + 20 novas) |
 | `frontend/lib/api.ts` | Cliente HTTP do frontend para a API FastAPI |
@@ -208,17 +211,18 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 **Docs atualizados:** `README.md` e `ARCHITECTURE.md` (telas Graph `/graph` e Audit `/audit`, redirects legados `/loops`→`/graph` e `/auditoria`→`/audit`).
 
 ### Estado do git
-Working tree **sujo** (mudanças não commitadas). `git status` mostra: backend (`api/main.py`, `src/open_agentic_ops/graph/__init__.py`, `src/open_agentic_ops/state/__init__.py`, `tests/test_api.py`, `tests/test_graph.py`) + frontend (rotas movidas, sidebar, loop-canvas, loop-status, column-board, intake, audit, tasks, api.ts, loop-stages, testes) + docs (`README.md`, `ARCHITECTURE.md`, `HANDOFF.md`). Redirects novos em `app/(dashboard)/loops/` e `app/(dashboard)/auditoria/` (untracked). **Nada commitado ainda.**
+Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commits coesos:
+- `4191eb1` — `feat(runtime)`: pausar grafo na autoria de spec e distinguir HITL de autoria no resume
+- `c953d56` — `refactor(console)`: alinhar nomenclatura ao CONTEXT.md e completar jornada do FDE
+- `45aa19b` — `docs`: arquivar change fde-console e atualizar rotas `/graph` e `/audit`
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37). Redesign + evolução do console (Tasks, /loops, Kanban read-only, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: tarefa de nomenclatura/jornada do FDE CONCLUÍDA — backend e frontend prontos, testes/lint/build verdes (30 pytest + 15 vitest), docs atualizadas. Falta commitar e arquivar o change `fde-console`.**
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: tarefa de nomenclatura/jornada do FDE CONCLUÍDA — backend e frontend prontos, testes/lint/build verdes (30 pytest + 15 vitest), docs atualizadas, change arquivado, tudo commitado e pusheado.**
 
-1. **Commitar as mudanças da sessão** (nomenclatura Loop→Graph, Board→Colunas, jornada do FDE em Intake/Auditoria, testes, docs) — working tree ainda sujo.
-2. **Arquivar o change `fde-console`** no OpenSpec (`/opsx:archive fde-console` → `openspec/archive/<date>-fde-console/`), seguindo o padrão do projeto.
-3. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
-4. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
-5. **Definir os Guias concretos** (skills backend/frontend) para o nó Feature Agent.
+1. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
+2. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+3. **Definir os Guias concretos** (skills backend/frontend) para o nó Feature Agent.
 
 ## Fontes-chave
 

@@ -75,7 +75,10 @@ def test_board_view_lista_threads_automaticamente():
     checkpointer = build_dev_checkpointer()
     app = build_graph().compile(checkpointer=checkpointer)
     app.invoke(
-        {"origem": "cliente", "spec": "Adicionar botão de download no dashboard."},
+        {
+            "origem": "cliente",
+            "spec": "Adicionar botão de download no dashboard.",
+        },
         {"configurable": {"thread_id": "bv-1"}},
     )
 

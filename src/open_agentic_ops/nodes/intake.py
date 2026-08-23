@@ -76,6 +76,23 @@ class Heuristica:
             "sem precedente",
         }
     )
+    baixa_ambiguidade: set[str] = field(
+        default_factory=lambda: {
+            "dashboard",
+            "botao",
+            "tela",
+            "formulario",
+            "melhoria",
+            "bug",
+            "ajuste",
+            "correcao",
+            "visual",
+            "layout",
+            "componente",
+            "ux",
+            "ui",
+        }
+    )
 
 
 def _serializar(h: Heuristica) -> dict:
@@ -83,6 +100,7 @@ def _serializar(h: Heuristica) -> dict:
         "backend": sorted(h.backend),
         "frontend": sorted(h.frontend),
         "alta_ambiguidade": sorted(h.alta_ambiguidade),
+        "baixa_ambiguidade": sorted(h.baixa_ambiguidade),
     }
 
 
@@ -91,6 +109,7 @@ def _desserializar(d: dict) -> Heuristica:
         backend=set(d.get("backend", [])),
         frontend=set(d.get("frontend", [])),
         alta_ambiguidade=set(d.get("alta_ambiguidade", [])),
+        baixa_ambiguidade=set(d.get("baixa_ambiguidade", [])),
     )
 
 
@@ -134,10 +153,20 @@ def classificar_dominio(
 def classificar_ambiguidade(
     texto: str, heuristica: Heuristica | None = None
 ) -> tuple[Ambiguidade, list[str]]:
-    """Classifica a ambiguidade e retorna as palavras-chave que motivaram."""
+    """Classifica a ambiguidade e retorna as palavras-chave que motivaram.
+
+    Ordem de precedência:
+    1. Keyword de `alta_ambiguidade` → `alta` (justificativa preenchida).
+    2. Keyword de `baixa_ambiguidade` → `baixa` (justificativa preenchida).
+    3. Nenhum reconhecimento → `alta` (fallback invertido, justificativa vazia),
+       escalando ao FDE por ausência de reconhecimento.
+    """
     h = heuristica or carregar_heuristica()
     t = texto.lower()
-    hits = [p for p in h.alta_ambiguidade if p in t]
-    if hits:
-        return "alta", hits
-    return "baixa", []
+    alta_hits = [p for p in h.alta_ambiguidade if p in t]
+    if alta_hits:
+        return "alta", alta_hits
+    baixa_hits = [p for p in h.baixa_ambiguidade if p in t]
+    if baixa_hits:
+        return "baixa", baixa_hits
+    return "alta", []

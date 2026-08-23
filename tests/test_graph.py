@@ -59,7 +59,10 @@ def test_fluxo_baixa_ambiguidade_sem_fde():
     config = {"configurable": {"thread_id": "baixa-1"}}
 
     result = app.invoke(
-        {"origem": "cliente", "spec": "Adicionar botão de download no dashboard."},
+        {
+            "origem": "cliente",
+            "spec": "Adicionar botão de download no dashboard.",
+        },
         config,
     )
 

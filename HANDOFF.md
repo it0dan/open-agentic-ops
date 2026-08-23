@@ -24,7 +24,44 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.**
 
-**Validação (estado atual):** `poetry run pytest` → **47 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
+**Validação (estado atual):** `poetry run pytest` → **48 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
+
+## Trabalho desta sessão (Intake Agent — decisão 1: fallback de ambiguidade)
+
+**Tarefa:** maturar o próximo agente/sessão do documento de definições (`Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md`) — o **Intake Agent** (seção 6). A seção 6 já tinha 4 decisões fechadas; esta sessão focou na **decisão 1 (inverter o fallback de ambiguidade)**, seguindo o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado e arquivado.**
+
+### ✅ Concluído
+
+**Feature Intake Brief** — `docs/sdd/feature-intakes/intake-fallback-ambiguidade.md` (template `docs/sdd/feature-intake-template.md`):
+- Contexto de negócio: fail-safe em sistema regulado (silêncio da heurística ≠ simplicidade).
+- In scope: inverter fallback + justificativa vazia sinaliza "escalado por ausência de reconhecimento".
+- Out of scope: decisões 2/3/4 da seção 6 (similaridade semântica pgvector, PII conta/agência/Pix, novo motivo de discordância na Audit).
+- Critérios de aceite + riscos (quebra de testes, sobrecarga do FDE).
+
+**Safe analysis** (sem modificar arquivos): código atual (`intake.py:143` retorna `"baixa", []`), 4 testes afetados, ADRs 0006/0012 revisados. Confirmou que é seguro rodar `/opsx:propose`.
+
+**Change OpenSpec `intake-fallback-ambiguidade`** — criado via CLI `openspec` (v1.3.1), **validado** (`openspec validate` → valid) e **arquivado** em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/`:
+- `proposal.md` — por que inverter o fallback.
+- `design.md` — decisões D1 (inverter fallback), D2 (keyword de `baixa_ambiguidade`), D3 (teste novo do fallback).
+- `specs/intake-fallback-ambiguidade/spec.md` — 1 requirement (ADDED) com 3 cenários.
+- `tasks.md` — 3 grupos (implementação, testes, validação).
+
+**Implementação (Apply):** `classificar_ambiguidade` (`src/open_agentic_ops/nodes/intake.py`) ganhou precedência de 3 níveis:
+1. Keyword de `alta_ambiguidade` → `alta` (justificativa preenchida).
+2. Keyword de `baixa_ambiguidade` → `baixa` (justificativa preenchida) — **nova lista** em `intake.py` e `heuristica.json` (13 keywords: dashboard, botao, tela, formulario, melhoria, bug, ajuste, correcao, visual, layout, componente, ux, ui).
+3. Nenhum reconhecimento → `alta` (fallback invertido, justificativa vazia) — escala ao FDE por ausência de reconhecimento.
+
+**Evolução do design durante o Apply:** a inversão pura faria todo texto sem keyword de alta virar `alta`, eliminando o caminho de baixa. Para preservá-lo, adicionou-se a lista `baixa_ambiguidade` de keywords positivas — demandas claramente simples continuam rascunhadas pelo Intake; apenas o que a heurística não reconhece escala ao FDE. (Alternativa inicial de adicionar keyword de alta aos testes de baixa foi rejeitada por ser auto-contraditória.)
+
+**Testes:** novo `test_fallback_ambiguidade_sem_keyword_escala_fde` em `tests/test_intake.py`; demais testes apenas reformatados (sem mudança de comportamento). **48 passed, ruff limpo.**
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Fallback de ambiguidade: `src/open_agentic_ops/nodes/intake.py`, `src/open_agentic_ops/nodes/heuristica.json`, `tests/test_intake.py`, `tests/test_graph.py`, `tests/test_api.py`, `tests/test_runtime_ext.py`, `docs/sdd/feature-intakes/intake-fallback-ambiguidade.md`, `openspec/archive/2026-08-23-intake-fallback-ambiguidade/`, `HANDOFF.md` (esta seção).
+- Frontend (trabalho separado): `frontend/components/column-tasks.tsx` (badges de ambiguidade + prioridade nos cards).
+
+### Próxima ação recomendada
+Commitar em 2 commits separados (fallback de ambiguidade + frontend). Depois, as decisões 2/3/4 da seção 6 (similaridade semântica pgvector, PII conta/agência/Pix, novo motivo de discordância na Audit).
 
 ## Encerramento da sessão (docs + commits)
 
@@ -466,14 +503,16 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** Tudo commitado e pusheado para `origin/main`.
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** **Intake Agent (decisão 1, fallback de ambiguidade): change OpenSpec `intake-fallback-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/` (precedência alta→baixa→fallback `alta`, lista `baixa_ambiguidade`, 48 passed).** Tudo commitado e pusheado para `origin/main`.
 
-1. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
+1. ~~**Intake Agent — decisão 1 (fallback de ambiguidade)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-fallback-ambiguidade` implementado e arquivado em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/`. `classificar_ambiguidade` com precedência de 3 níveis (alta → baixa → fallback `alta`), nova lista `baixa_ambiguidade` em `intake.py`/`heuristica.json`, teste novo do fallback. **48 passed, ruff limpo.** Próximas: decisões 2/3/4 da seção 6 (similaridade semântica pgvector, PII conta/agência/Pix, novo motivo de discordância na Audit).
+2. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
 2. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
-3. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra. **PRÓXIMO PASSO.**
-4. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
-5. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
-6. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
+3. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
+4. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra. **PRÓXIMO PASSO.**
+5. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
+6. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+7. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
 
 ## Fontes-chave
 

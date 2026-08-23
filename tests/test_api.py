@@ -125,7 +125,10 @@ def test_intake_defaults_quando_omitidos(client):
 def test_board_lista_demandas(client):
     client.post(
         "/intake",
-        json={"origem": "cliente", "texto": "Adicionar botão de download no dashboard."},
+        json={
+            "origem": "cliente",
+            "texto": "Adicionar botão de download no dashboard.",
+        },
     )
     r = client.get("/tasks")
     assert r.status_code == 200

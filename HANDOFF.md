@@ -22,6 +22,27 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Validação:** `poetry run pytest` → 28 passed; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **12/12 passed**; smoke test das rotas (`/login`, `/dashboard`, `/tasks`, `/loops`, detalhe → 200; `/board` e `/board/[id]` → 307 redirect).
 
+## Trabalho desta sessão (encerramento)
+
+**1. Smoke test E2E completo do console** — subiu API (porta 8000) e frontend (porta 3000) e validou ponta a ponta: `GET /tasks` (lista/detalhe/404), `POST /intake` (cria demanda + valida texto vazio → 422), `GET /auditoria`, `POST /auditoria/heuristica` (add/remove), `POST /resume` (aprova/rejeita HITL), todas as rotas do frontend (200) e redirects `/board` → `/tasks` (307). Tudo verde.
+
+**2. Renomeação do recurso REST `/demandas` → `/tasks`** (boas práticas REST):
+- API: `GET /demandas` → `GET /tasks`; `GET /demandas/{thread_id}` → `GET /tasks/{thread_id}` (`api/main.py`).
+- Frontend: pasta `app/(dashboard)/demandas/` → `app/(dashboard)/tasks/`; cliente HTTP (`lib/api.ts`) e links de navegação atualizados; redirects de compatibilidade `/board` → `/tasks` mantidos.
+- Testes (`tests/test_api.py`) atualizados.
+- `/demandas` e `/board` agora retornam **404** na API (mortos); `/board` e `/demandas` no frontend são redirects 307 → `/tasks`.
+
+**3. Commit e push do change `fde-console`** — 4 commits coesos pusheados para `origin/main`:
+- `3f5eb37` — runtime (heurística mutável, classificação auditável, BoardView dinâmico)
+- `673b26b` — camada de API FastAPI (`/tasks`, `/resume`, `/intake`, `/auditoria`)
+- `2eb5385` — console Next.js + shadcn/ui (83 arquivos)
+- `1664f07` — docs (ADR-0014, change OpenSpec, HANDOFF)
+
+**4. Revisão e atualização de documentação** — commit `9c35708` pusheado:
+- README (seção "Console do FDE", execução local, estado), ARCHITECTURE (seção do console + containers), HANDOFF, ADR-0014 (endpoints `/tasks`), `openspec/project.md` (next feature `fde-console`, out of scope, tech stack), artefatos do change `fde-console` (proposal/design/spec/tasks refletem `/tasks`).
+
+**5. Serviços no ar ao final da sessão:** API FastAPI em `http://127.0.0.1:8000` e console Next.js em `http://localhost:3000` (ambos com o código atualizado).
+
 ## Decisões fechadas
 
 ### Maturação (Rodada 0)
@@ -156,7 +177,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37). Redesign + evolução do console (Tasks, /loops, Kanban read-only, filtros por facet, metadados, mock populado) **concluídos e validados** (lint/build/test verdes, 12/12). **Change `fde-console` commitado e pusheado** para `origin/main` (4 commits: runtime, API, console, docs). Recurso REST da API renomeado para `/tasks` (com `/board` e `/demandas` mortos na API e redirects de compatibilidade no frontend).
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37). Redesign + evolução do console (Tasks, /loops, Kanban read-only, filtros por facet, metadados, mock populado) **concluídos e validados** (lint/build/test verdes, 12/12). **Change `fde-console` commitado e pusheado** para `origin/main` (4 commits: runtime, API, console, docs). Recurso REST da API renomeado para `/tasks` (com `/board` e `/demandas` mortos na API e redirects de compatibilidade no frontend). **Documentação revisada e atualizada** (commit `9c35708`). Working tree limpo.
 
 1. **Arquivar o change `fde-console`** no OpenSpec (`/opsx:archive fde-console` → `openspec/archive/<date>-fde-console/`), seguindo o padrão do projeto.
 2. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.

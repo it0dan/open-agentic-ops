@@ -17,14 +17,20 @@ from open_agentic_ops.state import BoardState, DecisaoHitl
 
 def hitl_gate(state: BoardState) -> BoardState:
     """Bloqueia o fluxo até o FDE aprovar/rejeitar via `POST /resume`."""
-    decisao: DecisaoHitl = interrupt(
-        {
-            "tipo": "hitl",
-            "thread": state.get("origem", "desconhecida"),
-            "spec_resumo": (state.get("spec") or "")[:200],
-            "worktrees": [wt["branch"] for wt in state.get("worktrees", [])],
-        }
-    )
+    feedbacks = state.get("feedback_review", [])
+    discordancias = [fb for fb in feedbacks if fb.get("discorda_classificacao")]
+
+    payload: dict = {
+        "tipo": "hitl",
+        "thread": state.get("origem", "desconhecida"),
+        "spec_resumo": (state.get("spec") or "")[:200],
+        "worktrees": [wt["branch"] for wt in state.get("worktrees", [])],
+    }
+    if discordancias:
+        payload["review_discordancia"] = True
+        payload["review_motivos"] = [fb.get("motivo") for fb in discordancias if fb.get("motivo")]
+
+    decisao: DecisaoHitl = interrupt(payload)
 
     rejeitado = decisao.get("decisao") == "rejeitado"
     return {

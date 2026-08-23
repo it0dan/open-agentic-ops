@@ -54,6 +54,11 @@ class FeedbackReview(TypedDict):
     worktree: str
     feedback: str
     discorda_classificacao: bool
+    motivo: str | None
+    ambiguidade_sugerida: Ambiguidade | None
+
+
+OrigemDiscordancia = Literal["review", "fde_auditoria", "fde_hitl"]
 
 
 class Adr(TypedDict):
@@ -101,6 +106,7 @@ class BoardState(TypedDict, total=False):
     domino: Dominio
     worktrees: Annotated[list[Worktree], operator.add]
     feedback_review: Annotated[list[FeedbackReview], operator.add]
+    origem_discordancia: OrigemDiscordancia
     adrs: Annotated[list[Adr], operator.add]
     pii_masked: bool
     decisao_hitl: DecisaoHitl

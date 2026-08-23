@@ -130,13 +130,14 @@ def build_graph(
     monitorar: Callable[[], dict] | None = None,
     buscar_precedentes: Callable[..., Sequence[object]] | None = None,
     registrar_precedente: Callable[..., None] | None = None,
+    revisar: Callable[[dict], dict] | None = None,
 ) -> StateGraph:
     """Monta o grafo da squad com os nós e arestas condicionais."""
     feature_backend = make_feature_node("backend", llm=llm, tools=tools, skill_dir=skill_dir)
     feature_frontend = make_feature_node("frontend", llm=llm, tools=tools, skill_dir=skill_dir)
     platform = make_platform_node(tools=tools)
     architecture = make_architecture_node()
-    review = make_review_node()
+    review = make_review_node(revisar=revisar)
     eval_gate = make_eval_gate(runner=eval_runner)
     sre = make_sre_node(
         monitorar=monitorar,

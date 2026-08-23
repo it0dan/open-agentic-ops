@@ -14,6 +14,7 @@ fronteira (Intake) — nunca expõe PII raw (RNF-1). Endpoints:
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -66,7 +67,7 @@ class AmbiguidadeBody(BaseModel):
 _contador_ambig_nao_keyword = 0
 
 
-def create_app() -> FastAPI:
+def create_app(*, revisar: Callable[[dict], dict] | None = None) -> FastAPI:
     """Monta o app FastAPI com o grafo compilado e o checkpointer (board)."""
     app = FastAPI(title="Open Agentic Ops — FDE Console API")
 
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
         criar_demanda=criar_demanda,
         buscar_precedentes=buscar_precedentes,
         registrar_precedente=registrar_precedente,
+        revisar=revisar,
     ).compile(checkpointer=build_dev_checkpointer())
     view = BoardView(graph.checkpointer)
     resume = make_resume_handler()
@@ -179,7 +181,14 @@ def create_app() -> FastAPI:
         for thread_id, snap in view.all():
             cls = snap.get("classificacao_intake")
             if cls is not None:
-                items.append({"thread_id": thread_id, **cls})
+                item = {"thread_id": thread_id, **cls}
+                discordancias = [
+                    fb for fb in snap.get("feedback_review", []) if fb.get("discorda_classificacao")
+                ]
+                if discordancias:
+                    item["origem_discordancia"] = snap.get("origem_discordancia")
+                    item["discordancias_review"] = discordancias
+                items.append(item)
         return items
 
     @app.post("/auditoria/heuristica")
@@ -283,6 +292,7 @@ def _detalhe(thread_id: str, snap: BoardState) -> dict:
         "worktrees": snap.get("worktrees", []),
         "adrs": snap.get("adrs", []),
         "feedback_review": snap.get("feedback_review", []),
+        "origem_discordancia": snap.get("origem_discordancia"),
         "decisao_hitl": snap.get("decisao_hitl"),
         "resultado_eval": snap.get("resultado_eval"),
         "resultado_monitoramento": snap.get("resultado_monitoramento"),

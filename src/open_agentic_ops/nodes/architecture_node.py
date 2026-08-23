@@ -1,8 +1,8 @@
 """Nó Architecture (RF-3.4, RF-4.2, ADR-0007).
 
 Complicated-subsystem. Discute contrato de API externo/compliance de forma
-síncrona (A2A), registra ADR e aconselha sem vetar. Se discordar da
-classificação do Intake em andamento, pausa e escala ao FDE.
+síncrona (A2A), registra ADR e aconselha sem vetar. Papel puramente
+consultivo — a decisão final fica com o Feature Agent.
 """
 
 from __future__ import annotations

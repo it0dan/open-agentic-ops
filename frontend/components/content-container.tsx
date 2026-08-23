@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 export function ContentContainer({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const fullWidth = pathname === "/loops";
+  const fullWidth = pathname === "/graph";
 
   return (
     <main

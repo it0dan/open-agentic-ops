@@ -8,7 +8,7 @@ import { demandasMock, type Demanda } from "@/lib/mock-data";
 
 const POLL_INTERVAL = 4000;
 
-export default function LoopsPage() {
+export default function GraphPage() {
   const [demandas, setDemandas] = useState<Demanda[]>(demandasMock);
   const [usandoMock, setUsandoMock] = useState(false);
 

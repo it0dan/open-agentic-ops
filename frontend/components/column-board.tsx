@@ -25,7 +25,7 @@ const FLUXO: Status[] = [
   "monitorado",
 ];
 
-function KanbanCard({ demanda }: { demanda: Demanda }) {
+function ColumnCard({ demanda }: { demanda: Demanda }) {
   return (
     <Link
       href={`/tasks/${demanda.thread_id}`}
@@ -52,7 +52,7 @@ function KanbanCard({ demanda }: { demanda: Demanda }) {
   );
 }
 
-export function KanbanBoard({ demandas }: { demandas: Demanda[] }) {
+export function ColumnBoard({ demandas }: { demandas: Demanda[] }) {
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
 
   const porColuna = useMemo(() => {
@@ -112,7 +112,7 @@ export function KanbanBoard({ demandas }: { demandas: Demanda[] }) {
             </div>
             <div className="flex flex-1 flex-col gap-2">
               {cards.map((d) => (
-                <KanbanCard key={d.thread_id} demanda={d} />
+                <ColumnCard key={d.thread_id} demanda={d} />
               ))}
               {cards.length === 0 && (
                 <p className="px-1 py-4 text-center text-xs text-muted-foreground">

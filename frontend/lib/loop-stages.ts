@@ -5,9 +5,10 @@ export function montarStages(demandas: Demanda[]): LoopStage[] {
   const emExecucao = demandas.some((d) =>
     ["em_implementacao", "em_revisao"].includes(d.status),
   );
-  const hitl = demandas.filter((d) => d.status === "aguardando_hitl").length;
+  const hitl = demandas.filter((d) => d.status === "aguardando_hitl");
   const monitoradas = demandas.filter((d) => d.status === "monitorado").length;
   const erros = demandas.reduce((acc, d) => acc + (d.erros ?? 0), 0);
+  const emEval = demandas.filter((d) => d.status === "em_eval");
   const progressoMedio = demandas.length
     ? Math.round(
         demandas.reduce((acc, d) => acc + (d.progresso ?? 0), 0) /
@@ -99,16 +100,17 @@ export function montarStages(demandas: Demanda[]): LoopStage[] {
       id: "hitl",
       label: "HITL",
       agente: "FDE",
-      estado: hitl > 0 ? "hitl" : "concluido",
-      progresso: hitl > 0 ? 50 : 100,
+      estado: hitl.length > 0 ? "hitl" : "concluido",
+      progresso: hitl.length > 0 ? 50 : 100,
+      thread_id: hitl[0]?.thread_id,
       ultimaAcao:
-        hitl > 0
+        hitl.length > 0
           ? "Aguardando aprovação humana no gate de merge."
           : "Gate aprovado pelo FDE.",
-      duracao: hitl > 0 ? "—" : "0m 05s",
+      duracao: hitl.length > 0 ? "—" : "0m 05s",
       inicio: "10:18:21",
       eventos: [
-        ...(hitl > 0
+        ...(hitl.length > 0
           ? [
               {
                 timestamp: "10:18:21",
@@ -131,6 +133,7 @@ export function montarStages(demandas: Demanda[]): LoopStage[] {
       agente: "Eval Gate",
       estado: erros > 0 ? "erro" : "concluido",
       progresso: erros > 0 ? 60 : 100,
+      resultado_eval: emEval[0]?.resultado_eval,
       ultimaAcao:
         erros > 0
           ? "Trajectory eval reprovou com falhas de conformidade."

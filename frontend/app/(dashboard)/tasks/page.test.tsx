@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { demandasMock } from "@/lib/mock-data";
@@ -38,5 +38,17 @@ describe("BoardPage", () => {
     expect(
       await screen.findByText(/Nenhuma demanda encontrada/i),
     ).toBeInTheDocument();
+  });
+
+  it("alterna para a visão de colunas ao clicar no toggle", async () => {
+    vi.mocked(listarDemandas).mockResolvedValue(demandasMock);
+
+    render(<BoardPage />);
+
+    await screen.findByText(/Adicionar botão de download/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /Colunas/i }));
+
+    expect(await screen.findByText(/Triado/i)).toBeInTheDocument();
   });
 });

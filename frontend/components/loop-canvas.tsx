@@ -16,13 +16,16 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
+  Check,
   CheckCircle2,
   ExternalLink,
   Loader2,
   RotateCcw,
   ShieldAlert,
   TriangleAlert,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +36,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { aprovarDemanda } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 import type { LoopStage } from "@/components/loop-status";
@@ -102,6 +106,7 @@ function LoopCanvasInner({
   showToolbar?: boolean;
 }) {
   const [selecionado, setSelecionado] = useState<LoopStage | null>(null);
+  const [enviando, setEnviando] = useState(false);
   const [posicoes, setPosicoes] = useState<Record<string, { x: number; y: number }>>(
     () => {
       if (typeof window === "undefined") return {};
@@ -165,6 +170,28 @@ function LoopCanvasInner({
     fitView({ padding: 0.2, duration: 400 });
   }
 
+  async function decidir(aprovado: boolean) {
+    if (!selecionado?.thread_id) return;
+    setEnviando(true);
+    try {
+      await aprovarDemanda({
+        thread_id: selecionado.thread_id,
+        aprovado,
+        comentario: aprovado ? "Aprovado pelo FDE." : "Rejeitado pelo FDE.",
+      });
+      toast.success(
+        aprovado ? "Demanda aprovada" : "Demanda rejeitada",
+        { description: "Decisão registrada no HITL gate." },
+      );
+      setSelecionado(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro ao enviar decisão.";
+      toast.error("Falha ao registrar decisão", { description: msg });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       {showToolbar && (
@@ -224,9 +251,60 @@ function LoopCanvasInner({
                 <InfoItem label="Início" value={selecionado.inicio} />
               )}
 
+              {selecionado.id === "hitl" && selecionado.thread_id && (
+                <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
+                  <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                    <ShieldAlert className="size-4 text-orange-500" />
+                    Decisão do FDE (HITL)
+                  </p>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Aprovar libera o merge e segue para eval/deploy. Rejeitar
+                    marca a demanda como não aprovada.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => decidir(true)}
+                      disabled={enviando}
+                      className="rounded-xl bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                    >
+                      <Check className="mr-2 size-4" /> Aprovar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => decidir(false)}
+                      disabled={enviando}
+                      className="rounded-xl"
+                    >
+                      <X className="mr-2 size-4" /> Rejeitar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {selecionado.id === "eval" && selecionado.resultado_eval && (
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                  <p className="mb-2 text-sm font-semibold">Resultado do eval</p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      selecionado.resultado_eval.aprovado
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                    }
+                  >
+                    {selecionado.resultado_eval.aprovado ? "Aprovado" : "Reprovado"}
+                  </Badge>
+                  {selecionado.resultado_eval.detalhes && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {selecionado.resultado_eval.detalhes}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground opacity-60">
-                  Histórico de eventos
+                  Execution loop
                 </p>
                 {(selecionado.eventos ?? []).length === 0 ? (
                   <p className="text-sm text-muted-foreground">

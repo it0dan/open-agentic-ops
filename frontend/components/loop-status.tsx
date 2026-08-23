@@ -17,6 +17,8 @@ export interface LoopStage {
   inicio?: string;
   link?: string;
   eventos?: { timestamp: string; tipo: "info" | "sucesso" | "erro" | "hitl"; mensagem: string }[];
+  thread_id?: string;
+  resultado_eval?: { aprovado: boolean; detalhes: string | null };
 }
 
 export function LoopStatus({
@@ -50,7 +52,7 @@ export function LoopStatus({
     >
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="font-heading text-sm font-semibold">Loop da squad</h3>
+          <h3 className="font-heading text-sm font-semibold">Squad Graph</h3>
           <p className="text-xs text-muted-foreground">
             Execução em tempo real dos agentes
           </p>
@@ -75,7 +77,7 @@ export function LoopStatus({
           )}
           {onExpand && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-              Ver loop completo <Expand className="size-3.5" />
+              Ver graph completo <Expand className="size-3.5" />
             </span>
           )}
         </div>

@@ -31,10 +31,10 @@ import {
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tasks", label: "Demandas", icon: ClipboardList },
-  { href: "/loops", label: "Loops", icon: Activity },
+  { href: "/tasks", label: "Board", icon: ClipboardList },
+  { href: "/graph", label: "Graph", icon: Activity },
   { href: "/intake", label: "Intake", icon: Inbox },
-  { href: "/auditoria", label: "Auditoria", icon: SearchCheck },
+  { href: "/audit", label: "Audit", icon: SearchCheck },
 ];
 
 function NavItems() {

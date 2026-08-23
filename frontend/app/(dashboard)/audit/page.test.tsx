@@ -7,9 +7,9 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import { listarAuditoria } from "@/lib/api";
-import AuditoriaPage from "./page";
+import AuditPage from "./page";
 
-describe("AuditoriaPage", () => {
+describe("AuditPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -25,10 +25,27 @@ describe("AuditoriaPage", () => {
       },
     ]);
 
-    render(<AuditoriaPage />);
+    render(<AuditPage />);
 
     expect(await screen.findByText("backend")).toBeInTheDocument();
     expect(screen.getByText("portabilidade")).toBeInTheDocument();
     expect(screen.getByText("consignado")).toBeInTheDocument();
+  });
+
+  it("permite avaliar uma classificação como 'Manteria'", async () => {
+    vi.mocked(listarAuditoria).mockResolvedValue([
+      {
+        thread_id: "abc-123",
+        dominio: "backend",
+        ambiguidade: "alta",
+        justificativa: ["portabilidade"],
+        timestamp: "2026-08-22T10:15:00Z",
+      },
+    ]);
+
+    render(<AuditPage />);
+
+    const manteria = await screen.findAllByRole("button", { name: /Manteria/i });
+    expect(manteria.length).toBeGreaterThan(0);
   });
 });

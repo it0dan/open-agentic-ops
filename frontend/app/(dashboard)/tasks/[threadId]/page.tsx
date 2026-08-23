@@ -414,9 +414,9 @@ export default function DetalhePage() {
         <TabsContent value="eventos" className="mt-4">
           <Card className="card-elevated">
             <CardHeader>
-              <CardTitle>Timeline do loop</CardTitle>
+              <CardTitle>Execution loop</CardTitle>
               <CardDescription>
-                Eventos recentes da execução dos agentes
+                Traço de execução intra-agente (tool-calling trace)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

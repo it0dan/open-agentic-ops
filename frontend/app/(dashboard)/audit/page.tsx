@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, RefreshCcw, SearchCheck, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Plus, RefreshCcw, SearchCheck, ThumbsDown, ThumbsUp, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -46,6 +46,10 @@ const CATEGORIA_LABEL: Record<Categoria, string> = {
   alta_ambiguidade: "Alta ambiguidade",
 };
 
+const CALIBRATION_KEY = "fde-calibracao-intake";
+
+type Decisao = "manteria" | "discordo";
+
 const classificacoesMock: ClassificacaoAuditoria[] = demandasMock
   .filter((d) => d.classificacao_intake)
   .map((d) => ({
@@ -56,9 +60,17 @@ const classificacoesMock: ClassificacaoAuditoria[] = demandasMock
     timestamp: d.classificacao_intake!.timestamp,
   }));
 
-export default function AuditoriaPage() {
+export default function AuditPage() {
   const [classificacoes, setClassificacoes] =
     useState<ClassificacaoAuditoria[]>(classificacoesMock);
+  const [decisoes, setDecisoes] = useState<Record<string, Decisao>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(localStorage.getItem(CALIBRATION_KEY) ?? "{}");
+    } catch {
+      return {};
+    }
+  });
   const [categoria, setCategoria] = useState<Categoria>("alta_ambiguidade");
   const [palavra, setPalavra] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -70,6 +82,21 @@ export default function AuditoriaPage() {
         setClassificacoes(classificacoesMock);
       });
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(CALIBRATION_KEY, JSON.stringify(decisoes));
+  }, [decisoes]);
+
+  const metricas = useMemo(() => {
+    const avaliadas = Object.keys(decisoes).length;
+    const manteria = Object.values(decisoes).filter((d) => d === "manteria").length;
+    const pct = avaliadas ? Math.round((manteria / avaliadas) * 100) : 0;
+    return { avaliadas, manteria, discorda: avaliadas - manteria, pct };
+  }, [decisoes]);
+
+  function decidir(threadId: string, decisao: Decisao) {
+    setDecisoes((prev) => ({ ...prev, [threadId]: decisao }));
+  }
 
   async function corrigir(acao: "add" | "remove") {
     if (!palavra.trim()) return;
@@ -99,9 +126,49 @@ export default function AuditoriaPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Auditoria"
-        description="Classificações do Intake e correção prospectiva da heurística"
+        title="Audit"
+        description="Revisão de calibração das classificações de ambiguidade do Intake Agent"
       />
+
+      {/* Métrica de calibração */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">
+              % que o FDE manteria
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold tabular-nums">{metricas.pct}%</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {metricas.manteria} de {metricas.avaliadas} classificações avaliadas
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">Concordâncias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="flex items-center gap-2 text-3xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+              <ThumbsUp className="size-5" /> {metricas.manteria}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">Discordâncias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="flex items-center gap-2 text-3xl font-bold tabular-nums text-orange-500">
+              <ThumbsDown className="size-5" /> {metricas.discorda}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sinalizam drift na heurística do Intake Agent
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="card-elevated">
         <CardHeader>
@@ -110,7 +177,8 @@ export default function AuditoriaPage() {
             Classificações do Intake
           </CardTitle>
           <CardDescription>
-            Domínio, ambiguidade, justificativa e timestamp por demanda
+            Avalie cada classificação de ambiguidade: concorde ou sinalize
+            discordância. A correção é prospectiva (RNF-6).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,47 +190,71 @@ export default function AuditoriaPage() {
                 <TableHead>Ambiguidade</TableHead>
                 <TableHead>Justificativa</TableHead>
                 <TableHead>Timestamp</TableHead>
+                <TableHead className="text-right">Avaliação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {classificacoes.map((c) => (
-                <TableRow
-                  key={c.thread_id}
-                  className="border-border/60 transition-colors hover:bg-muted/40"
-                >
-                  <TableCell className="font-mono text-xs">
-                    {c.thread_id.slice(0, 8)}
-                  </TableCell>
-                  <TableCell className="capitalize">{c.dominio}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        c.ambiguidade === "alta"
-                          ? "border-orange-500/40 bg-orange-500/10 text-orange-400"
-                          : "border-border/60"
-                      }
-                    >
-                      {c.ambiguidade}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {c.justificativa.map((j) => (
-                        <span
-                          key={j}
-                          className="rounded-md bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+              {classificacoes.map((c) => {
+                const decisao = decisoes[c.thread_id];
+                return (
+                  <TableRow
+                    key={c.thread_id}
+                    className="border-border/60 transition-colors hover:bg-muted/40"
+                  >
+                    <TableCell className="font-mono text-xs">
+                      {c.thread_id.slice(0, 8)}
+                    </TableCell>
+                    <TableCell className="capitalize">{c.dominio}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          c.ambiguidade === "alta"
+                            ? "border-orange-500/40 bg-orange-500/10 text-orange-400"
+                            : "border-border/60"
+                        }
+                      >
+                        {c.ambiguidade}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {c.justificativa.map((j) => (
+                          <span
+                            key={j}
+                            className="rounded-md bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                          >
+                            {j}
+                          </span>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {c.timestamp}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant={decisao === "manteria" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => decidir(c.thread_id, "manteria")}
+                          className="h-8 gap-1 text-xs"
                         >
-                          {j}
-                        </span>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {c.timestamp}
-                  </TableCell>
-                </TableRow>
-              ))}
+                          <Check className="size-3.5" /> Manteria
+                        </Button>
+                        <Button
+                          variant={decisao === "discordo" ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={() => decidir(c.thread_id, "discordo")}
+                          className="h-8 gap-1 text-xs"
+                        >
+                          <X className="size-3.5" /> Discordo
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

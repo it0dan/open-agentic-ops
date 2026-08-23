@@ -147,14 +147,14 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Loop da squad */}
+        {/* Squad Graph */}
         <div className="lg:col-span-2">
           <LoopStatus
             stages={stages}
             progresso={kpis.progressoMedio}
             erros={kpis.erros}
             hitlPendente={kpis.hitl}
-            onExpand={() => router.push("/loops")}
+            onExpand={() => router.push("/graph")}
           />
         </div>
 

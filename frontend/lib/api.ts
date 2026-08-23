@@ -30,14 +30,22 @@ export function obterDemanda(threadId: string): Promise<Demanda> {
 
 export interface ResumePayload {
   thread_id: string;
-  aprovado: boolean;
+  aprovado?: boolean;
   comentario?: string | null;
+  spec?: string;
 }
 
 export function aprovarDemanda(payload: ResumePayload): Promise<Demanda> {
   return request<Demanda>("/resume", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function autorarSpec(threadId: string, spec: string): Promise<Demanda> {
+  return request<Demanda>("/resume", {
+    method: "POST",
+    body: JSON.stringify({ thread_id: threadId, spec }),
   });
 }
 

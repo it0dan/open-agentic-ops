@@ -6,16 +6,16 @@ import {
   Activity,
   ArrowUpRight,
   Clock,
+  Columns3,
   Inbox,
-  KanbanSquare,
   Layers,
   List,
   Loader2,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { ColumnBoard } from "@/components/column-board";
 import { FilterBar, type FilterGroup } from "@/components/filter-bar";
-import { KanbanBoard } from "@/components/kanban-board";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -84,10 +84,10 @@ export default function BoardPage() {
     Record<string, Set<string>>
   >({});
   const [filtroKpi, setFiltroKpi] = useState<string | null>(null);
-  const [visao, setVisao] = useState<"lista" | "kanban">(() => {
+  const [visao, setVisao] = useState<"lista" | "colunas">(() => {
     if (typeof window === "undefined") return "lista";
     const salva = window.localStorage.getItem("fde-visao-demandas");
-    return salva === "kanban" ? "kanban" : "lista";
+    return salva === "colunas" ? "colunas" : "lista";
   });
 
   useEffect(() => {
@@ -284,12 +284,12 @@ export default function BoardPage() {
             <List className="size-3.5" /> Lista
           </Button>
           <Button
-            variant={visao === "kanban" ? "default" : "ghost"}
+            variant={visao === "colunas" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setVisao("kanban")}
+            onClick={() => setVisao("colunas")}
             className="h-8 gap-1 text-xs"
           >
-            <KanbanSquare className="size-3.5" /> Kanban
+            <Columns3 className="size-3.5" /> Colunas
           </Button>
         </div>
       </div>
@@ -307,8 +307,8 @@ export default function BoardPage() {
           title="Nenhuma demanda encontrada"
           description="Ajuste os filtros ou injete uma nova demanda pelo Intake."
         />
-      ) : visao === "kanban" ? (
-        <KanbanBoard demandas={filtradas} />
+      ) : visao === "colunas" ? (
+        <ColumnBoard demandas={filtradas} />
       ) : (
         <div className="space-y-3">
           {filtradas.map((d) => (

@@ -70,6 +70,14 @@ export interface ClassificacaoAuditoria {
   ambiguidade: string;
   justificativa: string[];
   timestamp: string;
+  origem_discordancia?: string;
+  discordancias_review?: Array<{
+    worktree: string;
+    feedback: string;
+    discorda_classificacao: boolean;
+    motivo?: string | null;
+    ambiguidade_sugerida?: string | null;
+  }>;
 }
 
 export function listarAuditoria(): Promise<ClassificacaoAuditoria[]> {

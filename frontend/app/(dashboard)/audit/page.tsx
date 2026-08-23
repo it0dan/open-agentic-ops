@@ -60,6 +60,10 @@ const classificacoesMock: ClassificacaoAuditoria[] = demandasMock
     ambiguidade: d.classificacao_intake!.ambiguidade,
     justificativa: d.classificacao_intake!.justificativa,
     timestamp: d.classificacao_intake!.timestamp,
+    origem_discordancia: d.origem_discordancia,
+    discordancias_review: d.feedback_review?.filter(
+      (fb) => fb.discorda_classificacao,
+    ),
   }));
 
 export default function AuditPage() {
@@ -228,6 +232,7 @@ export default function AuditPage() {
                 <TableHead>Domínio</TableHead>
                 <TableHead>Ambiguidade</TableHead>
                 <TableHead>Justificativa</TableHead>
+                <TableHead>Review</TableHead>
                 <TableHead>Timestamp</TableHead>
                 <TableHead className="text-right">Avaliação</TableHead>
               </TableRow>
@@ -267,6 +272,18 @@ export default function AuditPage() {
                           </span>
                         ))}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {c.origem_discordancia === "review" ? (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        >
+                          Discordância
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {c.timestamp}

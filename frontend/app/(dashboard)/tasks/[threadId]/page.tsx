@@ -458,6 +458,14 @@ export default function DetalhePage() {
           <Card className="card-elevated">
             <CardHeader>
               <CardTitle>Feedbacks de review</CardTitle>
+              {demanda.origem_discordancia && (
+                <Badge
+                  variant="outline"
+                  className="w-fit border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                >
+                  Discordância · origem: {demanda.origem_discordancia}
+                </Badge>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {(demanda.feedback_review ?? []).length === 0 ? (
@@ -468,12 +476,39 @@ export default function DetalhePage() {
                 demanda.feedback_review!.map((fb, i) => (
                   <div
                     key={i}
-                    className="rounded-xl border border-border/60 bg-muted/30 p-4"
+                    className={`rounded-xl border p-4 ${
+                      fb.discorda_classificacao
+                        ? "border-amber-500/30 bg-amber-500/5"
+                        : "border-border/60 bg-muted/30"
+                    }`}
                   >
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {fb.worktree}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {fb.worktree}
+                      </p>
+                      {fb.discorda_classificacao && (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        >
+                          Discordância
+                        </Badge>
+                      )}
+                    </div>
                     <p className="mt-1 text-sm">{fb.feedback}</p>
+                    {fb.discorda_classificacao && (
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {fb.motivo && <p>Motivo: {fb.motivo}</p>}
+                        {fb.ambiguidade_sugerida && (
+                          <p>
+                            Ambiguidade sugerida:{" "}
+                            <span className="font-medium text-amber-600 dark:text-amber-400">
+                              {fb.ambiguidade_sugerida}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

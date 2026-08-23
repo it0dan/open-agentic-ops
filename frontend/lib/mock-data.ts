@@ -37,7 +37,11 @@ export interface FeedbackReview {
   worktree: string;
   feedback: string;
   discorda_classificacao: boolean;
+  motivo?: string | null;
+  ambiguidade_sugerida?: Ambiguidade | null;
 }
+
+export type OrigemDiscordancia = "review" | "fde_auditoria" | "fde_hitl";
 
 export interface Adr {
   titulo: string;
@@ -85,6 +89,7 @@ export interface Demanda {
   worktrees: Worktree[];
   adrs: Adr[];
   feedback_review: FeedbackReview[];
+  origem_discordancia?: OrigemDiscordancia;
   decisao_hitl?: DecisaoHitl;
   resultado_eval?: ResultadoEval;
   classificacao_intake?: ClassificacaoIntake;
@@ -134,7 +139,9 @@ export const demandasMock: Demanda[] = [
       {
         worktree: "feat/backend",
         feedback: "Validar enum do novo campo contra a norma.",
-        discorda_classificacao: false,
+        discorda_classificacao: true,
+        motivo: "classificação de ambiguidade subestimada",
+        ambiguidade_sugerida: "alta",
       },
       {
         worktree: "feat/frontend",
@@ -142,6 +149,7 @@ export const demandasMock: Demanda[] = [
         discorda_classificacao: false,
       },
     ],
+    origem_discordancia: "review",
     classificacao_intake: {
       dominio: "backend",
       ambiguidade: "alta",

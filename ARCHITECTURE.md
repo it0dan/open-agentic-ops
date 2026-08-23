@@ -124,6 +124,10 @@ Duas camadas no mesmo repositório (ADR-0014) dão ao FDE uma interface de opera
 
 O runtime continua funcionando sem o console (camadas incrementais e reversíveis).
 
+### Superfície de integração externa (planejada — Camada 2)
+
+Além do console do FDE (humana), o OAO terá uma **superfície de integração externa** por agente: endpoints `/oao/<agent>/chat/completions` (OpenAI-compatível), auth OAuth2 `client_credentials` (Keycloak), matriz de escopos transversais, delegação `act` e tenant-scoping (ADR-0015). O contrato está em [`Inicio/definicoes/oao-endpoints-and-scopes.md`](Inicio/definicoes/oao-endpoints-and-scopes.md) e o plano de implementação (3 fases) em [`docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md`](docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md) + change OpenSpec `oao-endpoints-auth-scopes`. **Não implementado ainda** — a API atual é apenas o console do FDE; a Fase A (Camada 1, harness) é o próximo passo.
+
 ## Portas (hexagonal leve — ADR-0004)
 
 - **LLMProviderPort** — troca de modelo/provider sem tocar o harness.

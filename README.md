@@ -18,6 +18,8 @@ Este repo é o **runtime da squad**. O opencode é a ferramenta usada para desen
 | [`docs/adr/`](docs/adr/) | Log de decisões de arquitetura (ADRs) |
 | [`docs/sdd/feature-start-playbook.md`](docs/sdd/feature-start-playbook.md) | Playbook de início de feature (SDD/SPDD + OpenSpec) |
 | [`docs/sdd/feature-intake-template.md`](docs/sdd/feature-intake-template.md) | Template de Feature Intake Brief |
+| [`Inicio/definicoes/oao-endpoints-and-scopes.md`](Inicio/definicoes/oao-endpoints-and-scopes.md) | Contrato de integração externa (endpoints por agente, auth, escopos, `act`, tenant) |
+| [`docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md`](docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md) | Feature Intake Brief do plano de endpoints/auth/scopes |
 | [`openspec/`](openspec/) | Pipeline spec-driven (proposal/design/spec/tasks) |
 | [`api/`](api/) | Camada de API FastAPI do console do FDE |
 | [`frontend/`](frontend/) | Console web do FDE (Next.js + shadcn/ui) |
@@ -100,6 +102,8 @@ O console consome a API em `http://localhost:8000` (configurável via `NEXT_PUBL
 - [x] Loop goal-based do Feature Agent (ADR-0016) — Camada 1/harness
 - [x] Gates condicionais (ADR-0017) — HITL rejeitado→END, Eval reprovado→hitl, nó `deploy`, `Status` `rejeitado`, decisão do FDE tipada
 - [x] SRE real (ADR-0019) — `ResultadoMonitoramento` estruturado + port `criar_demanda` (fecha o loop ADR-0010)
+- [x] Change 4 — cobertura de testes do fluxo por origem (`estrategia`/`sre`) até `monitorado` (76 passed)
+- [x] Plano de implementação da superfície de integração externa (endpoints por agente, auth OAuth2/Keycloak, escopos, `act`, tenant) documentado — `oao-endpoints-auth-scopes`
 
 ## Regras
 

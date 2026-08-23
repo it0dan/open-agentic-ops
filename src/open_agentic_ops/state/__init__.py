@@ -56,6 +56,13 @@ class ResultadoEval(TypedDict):
     detalhes: str | None
 
 
+class ClassificacaoIntake(TypedDict):
+    dominio: Dominio
+    ambiguidade: Ambiguidade
+    justificativa: list[str]
+    timestamp: str
+
+
 class BoardState(TypedDict, total=False):
     origem: Origem
     ambiguidade: Ambiguidade
@@ -70,3 +77,4 @@ class BoardState(TypedDict, total=False):
     decisao_hitl: DecisaoHitl
     resultado_eval: ResultadoEval
     sre_task_gerada: bool
+    classificacao_intake: ClassificacaoIntake

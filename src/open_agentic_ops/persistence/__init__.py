@@ -6,8 +6,7 @@ item de demanda = um `thread_id`; o estado persiste entre pausas/retomadas.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
@@ -36,30 +35,45 @@ def build_postgres_checkpointer(database_url: str) -> BaseCheckpointSaver:
 
 @dataclass
 class BoardView:
-    """View para o FDE consultar demandas pendentes (RF-8.2)."""
+    """View para o FDE consultar demandas (RF-8.2).
+
+    Lista os threads diretamente do checkpointer (sem cache manual), de modo
+    que qualquer demanda persistida aparece no board automaticamente.
+    """
 
     checkpointer: BaseCheckpointSaver
-    _cache: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def snapshot(self, thread_id: str) -> BoardState | None:
         """Estado corrente de um thread (item de demanda)."""
         state = self.checkpointer.get_tuple({"configurable": {"thread_id": thread_id}})
         if state is None:
             return None
-        return state.values
+        return state.checkpoint["channel_values"]
+
+    def list_threads(self) -> list[str]:
+        """Lista os thread_ids conhecidos no checkpointer."""
+        threads: list[str] = []
+        for checkpoint in self.checkpointer.list(None):
+            cfg = checkpoint.config.get("configurable", {})
+            tid = cfg.get("thread_id")
+            if tid and tid not in threads:
+                threads.append(tid)
+        return threads
+
+    def all(self) -> list[tuple[str, BoardState]]:
+        """Todas as demandas do board (thread_id, estado)."""
+        result: list[tuple[str, BoardState]] = []
+        for thread_id in self.list_threads():
+            snap = self.snapshot(thread_id)
+            if snap is not None:
+                result.append((thread_id, snap))
+        return result
 
     def pending(self) -> list[tuple[str, BoardState]]:
         """Demandas pendentes (aguardando HITL ou em andamento)."""
         result: list[tuple[str, BoardState]] = []
-        for thread_id in self._cache:
-            snap = self.snapshot(thread_id)
-            if snap is None:
-                continue
+        for thread_id, snap in self.all():
             status = snap.get("status")
             if status in {"aguardando_hitl", "em_implementacao", "em_revisao"}:
                 result.append((thread_id, snap))
         return result
-
-    def register(self, thread_id: str) -> None:
-        """Registra um thread_id conhecido no board."""
-        self._cache[thread_id] = {}

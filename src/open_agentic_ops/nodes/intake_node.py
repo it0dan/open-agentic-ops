@@ -2,10 +2,13 @@
 
 Recebe itens das 4 origens, mascara PII na fronteira de entrada (ADR-0006),
 classifica `dominio` e `ambiguidade`, rascunha a spec em baixa ambiguidade
-(`spec_autor=intake`) e escala ao FDE em alta (`spec_autor=fde`).
+(`spec_autor=intake`) e escala ao FDE em alta (`spec_autor=fde`). Registra a
+classificação + justificativa no estado para auditoria prospectiva (RNF-6).
 """
 
 from __future__ import annotations
+
+from datetime import UTC, datetime
 
 from open_agentic_ops.nodes.intake import classificar_ambiguidade, classificar_dominio
 from open_agentic_ops.pii import sanitizar_payload
@@ -20,8 +23,8 @@ def intake_node(state: BoardState) -> BoardState:
     sanitizado = sanitizar_payload({"spec": texto_raw})
     spec = sanitizado["spec"]
 
-    dominio = classificar_dominio(spec)
-    ambiguidade = classificar_ambiguidade(spec)
+    dominio, just_dominio = classificar_dominio(spec)
+    ambiguidade, just_ambiguidade = classificar_ambiguidade(spec)
 
     spec_autor = "intake" if ambiguidade == "baixa" else "fde"
 
@@ -33,6 +36,12 @@ def intake_node(state: BoardState) -> BoardState:
         "spec_autor": spec_autor,
         "pii_masked": True,
         "status": "triado",
+        "classificacao_intake": {
+            "dominio": dominio,
+            "ambiguidade": ambiguidade,
+            "justificativa": just_dominio + just_ambiguidade,
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
     }
 
 

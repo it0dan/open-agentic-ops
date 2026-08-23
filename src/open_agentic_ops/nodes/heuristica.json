@@ -1,0 +1,49 @@
+{
+  "backend": [
+    "api",
+    "bacen",
+    "banco",
+    "bcb",
+    "consignado",
+    "contrato",
+    "dados",
+    "endpoint",
+    "fapi",
+    "instrucao normativa",
+    "integracao",
+    "manual de escopo",
+    "nova_regra",
+    "oauth",
+    "portabilidade",
+    "schema",
+    "servidor",
+    "token",
+    "webhook"
+  ],
+  "frontend": [
+    "componente",
+    "dashboard",
+    "formulario",
+    "frontend",
+    "interface",
+    "layout",
+    "tela",
+    "ui",
+    "ux",
+    "visual"
+  ],
+  "alta_ambiguidade": [
+    "compliance",
+    "contrato externo",
+    "fapi-br",
+    "instrucao normativa",
+    "lei",
+    "lgpd",
+    "nova norma",
+    "novo campo",
+    "portabilidade",
+    "regulatorio",
+    "seguranca",
+    "sem precedente"
+  ]
+}

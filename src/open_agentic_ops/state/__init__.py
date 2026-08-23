@@ -34,6 +34,8 @@ class Worktree(TypedDict):
     branch: str
     status: str
     resultado: str | None
+    iteracoes: int | None
+    historico: list[dict] | None
 
 
 class FeedbackReview(TypedDict):

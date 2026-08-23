@@ -68,6 +68,16 @@ def _fan_in(state: BoardState) -> BoardState:
     return {"status": "em_revisao"}
 
 
+def _marcar_hitl(state: BoardState) -> BoardState:
+    """Marca a demanda como aguardando HITL antes do gate (ADR-0005).
+
+    O `hitl_gate` pausa via `interrupt()`; o status precisa refletir a espera
+    durante a pausa, então é setado aqui (nó anterior), no mesmo padrão de
+    `_escala_fde` → `_autoria_spec`.
+    """
+    return {"status": "aguardando_hitl"}
+
+
 def build_graph(
     *,
     llm: LLMProviderPort | None = None,
@@ -76,8 +86,8 @@ def build_graph(
     architecture_enabled: bool = True,
 ) -> StateGraph:
     """Monta o grafo da squad com os nós e arestas condicionais."""
-    feature_backend = make_feature_node("backend", llm=llm, skill_dir=skill_dir)
-    feature_frontend = make_feature_node("frontend", llm=llm, skill_dir=skill_dir)
+    feature_backend = make_feature_node("backend", llm=llm, tools=tools, skill_dir=skill_dir)
+    feature_frontend = make_feature_node("frontend", llm=llm, tools=tools, skill_dir=skill_dir)
     platform = make_platform_node(tools=tools)
     architecture = make_architecture_node()
     review = make_review_node()
@@ -97,6 +107,7 @@ def build_graph(
     builder.add_node("architecture", architecture)
     builder.add_node("fan_in", _fan_in)
     builder.add_node("review", review)
+    builder.add_node("marcar_hitl", _marcar_hitl)
     builder.add_node("hitl", hitl_gate)
     builder.add_node("eval", eval_gate)
     builder.add_node("sre", sre)
@@ -123,7 +134,8 @@ def build_graph(
     else:
         builder.add_edge("fan_in", "review")
 
-    builder.add_edge("review", "hitl")
+    builder.add_edge("review", "marcar_hitl")
+    builder.add_edge("marcar_hitl", "hitl")
     builder.add_edge("hitl", "eval")
     builder.add_edge("eval", "sre")
     builder.add_edge("sre", END)

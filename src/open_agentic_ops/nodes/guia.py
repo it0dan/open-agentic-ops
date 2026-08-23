@@ -18,6 +18,8 @@ class Guia:
     dominio: Dominio
     nome: str
     system_prompt: str
+    ferramentas: tuple[str, ...] = ()
+    checklist: tuple[str, ...] = ()
 
 
 _DEFAULT_BACKEND = (
@@ -34,6 +36,20 @@ _DEFAULT_FRONTEND = (
     "PII nunca deve ser manipulada em claro."
 )
 
+_CHECKLIST_BACKEND = (
+    "testes passando",
+    "lint limpo",
+    "contrato externo regulado respeitado (FAPI-BR)",
+    "sem PII em claro na resposta",
+)
+
+_CHECKLIST_FRONTEND = (
+    "testes passando",
+    "lint limpo",
+    "identidade visual Sensedia preservada",
+    "sem PII em claro na UI",
+)
+
 
 def carregar_guia(dominio: Dominio, skill_dir: Path | None = None) -> Guia:
     """Carrega o Guia para um domínio.
@@ -43,14 +59,23 @@ def carregar_guia(dominio: Dominio, skill_dir: Path | None = None) -> Guia:
     """
     if dominio == "backend":
         nome, base = "backend", _DEFAULT_BACKEND
+        ferramentas, checklist = ("test", "lint"), _CHECKLIST_BACKEND
     elif dominio == "frontend":
         nome, base = "frontend", _DEFAULT_FRONTEND
+        ferramentas, checklist = ("test", "lint"), _CHECKLIST_FRONTEND
     else:
         nome, base = "fullstack", _DEFAULT_BACKEND + "\n" + _DEFAULT_FRONTEND
+        ferramentas, checklist = ("test", "lint"), _CHECKLIST_BACKEND + _CHECKLIST_FRONTEND
 
     if skill_dir is not None:
         skill_file = Path(skill_dir) / "SKILL.md"
         if skill_file.exists():
             base = f"{base}\n\n---\n{skill_file.read_text(encoding='utf-8')}"
 
-    return Guia(dominio=dominio, nome=nome, system_prompt=base)
+    return Guia(
+        dominio=dominio,
+        nome=nome,
+        system_prompt=base,
+        ferramentas=ferramentas,
+        checklist=checklist,
+    )

@@ -252,3 +252,42 @@ def test_auditoria_ambigua_nao_altera_heuristica(client, restaurar_heuristica):
     client.post("/auditoria/ambigua", json={})
     depois = carregar_heuristica()
     assert antes == depois
+
+
+def test_resume_hitl_dispara_notifier():
+    chamadas: list[tuple[str, dict]] = []
+
+    def spy(thread_id: str, payload: dict) -> None:
+        chamadas.append((thread_id, payload))
+
+    with TestClient(create_app(notifier=spy)) as c:
+        intake = c.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
+        tid = intake["thread_id"]
+        c.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
+        c.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
+
+    assert len(chamadas) == 2
+    hitl = [p for _, p in chamadas if "decisao" in p["decision"]]
+    assert len(hitl) == 1
+    payload = hitl[0]
+    assert payload["status"] == "resumed"
+    assert payload["decision"] == {"decisao": "aprovado", "observacao": "ok"}
+
+
+def test_notifier_log_sanitiza_pii(caplog):
+    from api.main import _notifier_log
+
+    with caplog.at_level("INFO", logger="open_agentic_ops.hitl"):
+        _notifier_log(
+            "tid-1",
+            {
+                "status": "resumed",
+                "decision": {"decisao": "aprovado", "observacao": "CPF 123.456.789-00"},
+            },
+        )
+
+    assert "123.456.789-00" not in caplog.text
+    assert len(caplog.records) == 1
+    payload = caplog.records[0].payload
+    assert "123.456.789-00" not in str(payload)
+    assert "[CPF]" in str(payload)

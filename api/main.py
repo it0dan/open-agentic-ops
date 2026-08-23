@@ -13,9 +13,10 @@ fronteira (Intake) — nunca expõe PII raw (RNF-1). Endpoints:
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Callable
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,7 @@ from open_agentic_ops.nodes.intake import (
     carregar_heuristica,
     salvar_heuristica,
 )
+from open_agentic_ops.observability import sanitize_for_telemetry
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
 from open_agentic_ops.similaridade import buscar_precedentes, registrar_precedente
 from open_agentic_ops.state import (
@@ -66,8 +68,21 @@ class AmbiguidadeBody(BaseModel):
 
 _contador_ambig_nao_keyword = 0
 
+_logger = logging.getLogger("open_agentic_ops.hitl")
 
-def create_app(*, revisar: Callable[[dict], dict] | None = None) -> FastAPI:
+
+def _notifier_log(thread_id: str, payload: dict[str, Any]) -> None:
+    """Notifier concreto (Camada 1): log estruturado, sem PII raw (ADR-0006)."""
+    _logger.info(
+        "hitl.resumed", extra={"thread_id": thread_id, "payload": sanitize_for_telemetry(payload)}
+    )
+
+
+def create_app(
+    *,
+    revisar: Callable[[dict], dict] | None = None,
+    notifier: Callable[[str, dict[str, Any]], None] | None = None,
+) -> FastAPI:
     """Monta o app FastAPI com o grafo compilado e o checkpointer (board)."""
     app = FastAPI(title="Open Agentic Ops — FDE Console API")
 
@@ -104,7 +119,7 @@ def create_app(*, revisar: Callable[[dict], dict] | None = None) -> FastAPI:
         revisar=revisar,
     ).compile(checkpointer=build_dev_checkpointer())
     view = BoardView(graph.checkpointer)
-    resume = make_resume_handler()
+    resume = make_resume_handler(notifier=notifier or _notifier_log)
 
     @app.get("/health")
     def health() -> dict:

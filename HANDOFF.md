@@ -681,6 +681,33 @@ Working tree com mudanças não commitadas (aguardando commit):
 ### Próxima ação recomendada
 Committar (conventional commit coeso). Depois, continuar o fechamento do fluxo fim-a-fim (Camada 1): **Change 2** (wirear notifier do HITL), **Change 3** (topologia real do Graph no console — fan-out/fan-in + SRE→Intake), **Change 4** (cobertura de testes do fluxo por origem: `estrategia` com subtipo e `sre` via `criar_demanda`). Multi-tenancy (ADR-0015) permanece adiado.
 
+## Trabalho desta sessão (Change 2 — wirear notifier do HITL)
+
+**Tarefa:** fechar o fluxo fim-a-fim (Camada 1) — wirear um `notifier` concreto no `make_resume_handler` (hoje `None`), de modo que `NotificationPort.notify` passe a ser chamado no `POST /resume`. Seguiu o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado, validado e arquivado.**
+
+### ✅ Concluído
+
+**Feature Intake Brief** — `docs/sdd/feature-intakes/hitl-notifier-wire.md` (template do projeto).
+
+**Change OpenSpec `hitl-notifier-wire`** — criado via CLI `openspec`, **validado** (`openspec validate --changes` → valid) e **arquivado** em `openspec/archive/2026-08-23-hitl-notifier-wire/`:
+- `proposal.md` — por que wirear o canal de notificação do HITL.
+- `design.md` — decisões D1 (notifier = log estruturado, Camada 1), D2 (sanitização via `sanitize_for_telemetry`), D3 (teste via injeção de notifier no `create_app`).
+- `specs/hitl-notifier/spec.md` — 1 requirement (ADDED) com 2 cenários, sincronizada em `openspec/specs/hitl-notifier/spec.md`.
+- `tasks.md` — 3 grupos, 7 tasks (todas completas).
+
+**Implementação (Apply):**
+- `api/main.py` — `create_app` ganhou parâmetro `notifier` injetável (default = `_notifier_log`, log estruturado via `logging.getLogger("open_agentic_ops.hitl")`); `make_resume_handler(notifier=notifier or _notifier_log)` wireado; `_notifier_log` sanitiza o payload com `sanitize_for_telemetry` antes de logar (sem PII raw, ADR-0006).
+
+**Testes:** 2 novos em `tests/test_api.py` — `POST /resume` (caminho HITL) dispara o notifier injetado com `{status: "resumed", decision: {...}}`; `_notifier_log` mascara PII na `observacao` (ex.: `[CPF]`). **73 passed, ruff limpo.**
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `api/main.py`, `tests/test_api.py`, `HANDOFF.md` (esta seção).
+- Novos: `docs/sdd/feature-intakes/hitl-notifier-wire.md`, `openspec/archive/2026-08-23-hitl-notifier-wire/`, `openspec/specs/hitl-notifier/`.
+
+### Próxima ação recomendada
+Commitar (conventional commit coeso). Depois, **Change 3** (topologia real do Graph no console — fan-out/fan-in + SRE→Intake, fecha a decisão pendente de `docs/sdd/feature-intakes/graph-topologia-real.md`) e **Change 4** (cobertura de testes do fluxo por origem). Multi-tenancy (ADR-0015) permanece adiado.
+
 ## Próximos passos
 
 > **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** **Intake Agent (decisão 1, fallback de ambiguidade): change OpenSpec `intake-fallback-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/` (precedência alta→baixa→fallback `alta`, lista `baixa_ambiguidade`, 48 passed).** **Intake Agent (decisão 3, PII financeiro): change OpenSpec `intake-pii-financeiro` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-pii-financeiro/` (CHAVE_PIX UUID + CONTA_BANCARIA, 51 passed).** **Intake Agent (decisão 4, novo motivo de discordância na Audit): change OpenSpec `intake-audit-motivo-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/` (contador 'ambíguo demais para keyword' via `POST /auditoria/ambigua`, 53 passed).** **Intake Agent (decisão 2, similaridade semântica pgvector): change OpenSpec `intake-similaridade-semantica` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-similaridade-semantica/` (Sentence-Transformers local + pgvector, `make_intake_node` com DI, extra `langgraph-checkpoint-postgres@^2.0.25` resolvido, 61 passed).** **Feature Agent (decisão 2 da seção 7, gatilho dinâmico do Architecture): change OpenSpec `feature-architecture-gatilho-dinamico` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-feature-architecture-gatilho-dinamico/` (heurística `_toca_contrato_externo` no `feature_node`, aresta condicional `fan_in → {architecture | review}`, flag `architecture_enabled` removida, 71 passed).** Tudo commitado e pusheado para `origin/main`.
@@ -696,7 +723,7 @@ Committar (conventional commit coeso). Depois, continuar o fechamento do fluxo f
 9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
 10. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
 11. ~~**Feature Agent — decisão 2 da seção 7 (Architecture Agent como subagent no loop do Feature)**~~ — **CONCLUÍDO (Camada 1).** Change OpenSpec `feature-architecture-gatilho-dinamico` implementado e arquivado em `openspec/archive/2026-08-23-feature-architecture-gatilho-dinamico/`. Acionamento condicional do Architecture por demanda via heurística determinística `_toca_contrato_externo(spec)` no `feature_node` + aresta condicional `fan_in → {architecture | review}`; flag global `architecture_enabled` removida. **71 passed, ruff limpo.** *Nota: a chamada tipo subagent com contexto isolado (desenho completo da decisão 7.3) fica para Camada 2; nesta rodada o Architecture continua como nó do grafo, só com acionamento condicional.*
-12. **Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 2: wirear notifier do HITL.** `api/main.py` wirea um `notifier` concreto (log estruturado) no `make_resume_handler` (hoje `None`); `NotificationPort.notify` passa a ser chamado. Polling ~4s continua como fonte de verdade; Redis/SSE real fica para Camada 2. **PRÓXIMO PASSO.**
+12. ~~**Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 2: wirear notifier do HITL.**~~ — **CONCLUÍDO.** Change OpenSpec `hitl-notifier-wire` implementado e arquivado em `openspec/archive/2026-08-23-hitl-notifier-wire/`. `create_app` wirea um `notifier` concreto (log estruturado via `_notifier_log`, sanitizado com `sanitize_for_telemetry`) no `make_resume_handler`; `NotificationPort.notify` passa a ser chamado no `POST /resume`. **73 passed, ruff limpo.** Polling ~4s continua como fonte de verdade; Redis/SSE real fica para Camada 2.
 13. **Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 3: topologia real do Graph no console.** Atualizar `frontend/lib/loop-stages.ts` e `frontend/components/loop-canvas.tsx` para representar fan-out/fan-in dos worktrees backend/frontend e a aresta de fechamento SRE→Intake (ADR-0010). Fecha a decisão pendente registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`.
 14. **Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 4: cobertura de testes do fluxo por origem.** Novos testes em `tests/test_graph.py` para `estrategia` (com subtipo `nova_funcionalidade`/`melhoria`) e `sre` (via port `criar_demanda` → nova execução `origem=sre`) percorrendo o ciclo completo até `monitorado`.
 

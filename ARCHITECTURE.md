@@ -31,7 +31,7 @@ O Intake Agent é um **nó dentro do grafo** (não um componente externo). O boa
 
 ## C4 — Containers (nível 2)
 
-O sistema é um único container lógico (o runtime da squad) com componentes internos. A infraestrutura externa consumida:
+O sistema é composto por três containers lógicos: o **runtime da squad** (grafo LangGraph), a **API FastAPI** (`api/`) e o **console web** (`frontend/`). A infraestrutura externa consumida:
 
 | Container externo | Uso | Protocolo |
 |---|---|---|
@@ -100,6 +100,24 @@ O **board** é o checkpointer do grafo (ADR-0002). Persiste o estado de todos os
 O FDE conecta-se ao grafo via `POST /resume` em dois momentos:
 - **HITL gate** — aprova/rejeita o merge (ADR-0005).
 - **Autoria de spec** (alta ambiguidade) — injeta a spec autorada no estado do grafo, que continua o fluxo (ADR-0009).
+
+## Console do FDE (API + frontend)
+
+Duas camadas no mesmo repositório (ADR-0014) dão ao FDE uma interface de operação da squad:
+
+- **API FastAPI** (`api/`): expõe o grafo via HTTP. Endpoints: `GET /tasks` (lista), `GET /tasks/{thread_id}` (detalhe, 404 se inexistente), `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica` (correção prospectiva). Consome apenas o estado já mascarado na fronteira (Intake) — nunca expõe PII raw (RNF-1).
+- **Console web** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Demandas (`/tasks`), Detalhe, Loops, Intake, Auditoria. Consome a API via cliente HTTP (`lib/api.ts`), com fallback para dados mock.
+
+```
+[FDE (humano)]
+   │
+   ▼
+[Console web (frontend/)] ──HTTP──▶ [API FastAPI (api/)] ──▶ [Grafo LangGraph]
+                                        │
+                                        └──▶ checkpointer (board)
+```
+
+O runtime continua funcionando sem o console (camadas incrementais e reversíveis).
 
 ## Portas (hexagonal leve — ADR-0004)
 

@@ -12,7 +12,7 @@ O runtime da squad é um grafo LangGraph (Python) sem interface para o FDE (huma
 
 Adicionar duas camadas no mesmo repositório:
 
-1. **Camada de API FastAPI** (`api/`): expõe o grafo via HTTP. Endpoints: `GET /board`, `GET /board/{thread_id}` (404 se inexistente), `POST /resume` (HITL via `Command(resume=...)`, validando interrupt pendente), `POST /intake` (gera `uuid4`, valida texto não vazio), `GET /auditoria`, `POST /auditoria/heuristica` (correção prospectiva). A API consome apenas o estado já mascarado na fronteira (Intake) — nunca expõe PII raw (RNF-1).
+1. **Camada de API FastAPI** (`api/`): expõe o grafo via HTTP. Endpoints: `GET /tasks`, `GET /tasks/{thread_id}` (404 se inexistente), `POST /resume` (HITL via `Command(resume=...)`, validando interrupt pendente), `POST /intake` (gera `uuid4`, valida texto não vazio), `GET /auditoria`, `POST /auditoria/heuristica` (correção prospectiva). A API consome apenas o estado já mascarado na fronteira (Intake) — nunca expõe PII raw (RNF-1).
 
 2. **Console web do FDE** (`frontend/`): Next.js (App Router) + TypeScript + Tailwind v4 + shadcn/ui (preset `radix-nova`, base Radix) + next-themes, seguindo o brand book Sensedia (paleta roxa/laranja/azul, Montserrat + Roboto Mono, temas claro/escuro). Telas: Login (auth mockada, desenhada para OIDC), Board, Detalhe (com ações Aprovar/Rejeitar no HITL), Intake manual e Auditoria. Consome a API via cliente HTTP (`lib/api.ts`), com fallback para dados mock quando a API está indisponível.
 

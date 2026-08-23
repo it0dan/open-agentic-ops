@@ -26,6 +26,8 @@ A squad é um **grafo LangGraph** (Graph Engineering) que orquestra agentes que 
 - **Gestor de dependências**: Poetry
 - **Checkpointer (board)**: SqliteSaver/InMemorySaver (dev), PostgresSaver (prod)
 - **HITL**: interrupt() nativo + Redis/SSE (notificação) + POST /resume (ponte)
+- **API**: FastAPI (`api/`)
+- **Console do FDE**: Next.js + TypeScript + Tailwind v4 + shadcn/ui (`frontend/`)
 
 ## Conventions
 
@@ -134,24 +136,23 @@ Operação do ciclo de vida de Open Finance: normas regulatórias, demandas de c
 ## Current recommended next feature
 
 ```txt
-squad-open-agentic-ops
+fde-console
 ```
 
 Expected briefing location:
 
 ```txt
-docs/sdd/feature-intakes/squad-open-agentic-ops.md
+docs/sdd/feature-intakes/fde-console.md
 ```
 
 Feature intention:
 
-Implementar o grafo LangGraph da squad (nós, arestas, gates, portas) conforme `openspec/changes/squad-open-agentic-ops/`.
+Console do FDE (painel de operação da squad): camada de API FastAPI (`api/`) + console web Next.js (`frontend/`) para ver o board, aprovar/rejeitar no HITL, injetar demanda manualmente e auditar/corrigir a heurística do Intake. Change ativo em `openspec/changes/fde-console/` (37/37 tasks concluídas, aguardando archive).
 
 Out of scope para esta feature:
 
-- Web UI
-- HTTP API pública
-- Autenticação externa
+- Autenticação externa (OIDC) — auth mockada no MVP
+- Streaming real (SSE/WebSocket) — polling no MVP
 - RAG/vector database
 - Infra Postgres/Redis em produção (dev usa Sqlite/InMemory)
 - Dados reais de cliente

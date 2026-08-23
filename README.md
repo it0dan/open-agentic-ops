@@ -18,6 +18,8 @@ Este repo é o **runtime da squad**. O opencode é a ferramenta usada para desen
 | [`docs/sdd/feature-start-playbook.md`](docs/sdd/feature-start-playbook.md) | Playbook de início de feature (SDD/SPDD + OpenSpec) |
 | [`docs/sdd/feature-intake-template.md`](docs/sdd/feature-intake-template.md) | Template de Feature Intake Brief |
 | [`openspec/`](openspec/) | Pipeline spec-driven (proposal/design/spec/tasks) |
+| [`api/`](api/) | Camada de API FastAPI do console do FDE |
+| [`frontend/`](frontend/) | Console web do FDE (Next.js + shadcn/ui) |
 
 ## Desenvolvimento (SDD/SPDD + OpenSpec)
 
@@ -48,6 +50,25 @@ O processo completo está em [`docs/sdd/feature-start-playbook.md`](docs/sdd/fea
 
 Python + LangGraph (orquestração) + LangSmith (observabilidade/avaliação) + OTel (infra/métricas). Hexagonal leve só nas bordas. Ver ADRs em `docs/adr/`.
 
+## Console do FDE
+
+O console do FDE é composto por duas camadas no mesmo repositório:
+
+- **API** (`api/`): FastAPI expondo o grafo LangGraph. Endpoints: `GET /tasks`, `GET /tasks/{thread_id}`, `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`.
+- **Console** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Demandas (`/tasks`), Detalhe, Loops, Intake, Auditoria.
+
+Para rodar localmente:
+
+```bash
+# API (porta 8000)
+poetry run uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+# Console (porta 3000)
+cd frontend && npm run dev
+```
+
+O console consome a API em `http://localhost:8000` (configurável via `NEXT_PUBLIC_API_URL`), com fallback para dados mock quando a API está indisponível.
+
 ## Skills e MCPs
 
 **Skills instaladas** (em `~/.agents/skills/`):
@@ -72,6 +93,9 @@ Python + LangGraph (orquestração) + LangSmith (observabilidade/avaliação) + 
 - [x] `proposal.md`, `design.md`, `spec.md`, `tasks.md`, `prompt.md` (OpenSpec/SPDD)
 - [x] Scaffold do projeto Python (Poetry)
 - [x] Implementação do grafo LangGraph (24/24 tasks, testes verdes)
+- [x] Camada de API FastAPI do console do FDE (`api/`)
+- [x] Console web do FDE (`frontend/`) — Next.js + shadcn/ui
+- [x] Change `fde-console` (37/37 tasks) commitado e pusheado
 
 ## Regras
 

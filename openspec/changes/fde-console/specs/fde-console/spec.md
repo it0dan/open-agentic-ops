@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: FDE visualiza o board de demandas
-O console SHALL exibir a lista de demandas do board, cada uma com origem, ambiguidade, spec_autor, domínio, status e resumo da spec (PII já mascarada na fronteira). A lista SHALL ser obtida da API `GET /board`.
+O console SHALL exibir a lista de demandas do board, cada uma com origem, ambiguidade, spec_autor, domínio, status e resumo da spec (PII já mascarada na fronteira). A lista SHALL ser obtida da API `GET /tasks`.
 
 #### Scenario: Lista demandas do board
 - **WHEN** o FDE abre a tela de Board
@@ -12,7 +12,7 @@ O console SHALL exibir a lista de demandas do board, cada uma com origem, ambigu
 - **THEN** o console exibe um estado vazio com mensagem orientativa
 
 ### Requirement: FDE visualiza o detalhe de uma demanda
-O console SHALL exibir o detalhe completo de uma demanda selecionada, incluindo spec, worktrees (branch/status), ADRs, feedbacks de review, decisão HITL e resultado de eval, obtidos da API `GET /board/{thread_id}`.
+O console SHALL exibir o detalhe completo de uma demanda selecionada, incluindo spec, worktrees (branch/status), ADRs, feedbacks de review, decisão HITL e resultado de eval, obtidos da API `GET /tasks/{thread_id}`.
 
 #### Scenario: Abre detalhe de demanda
 - **WHEN** o FDE seleciona uma demanda na lista

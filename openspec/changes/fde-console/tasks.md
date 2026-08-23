@@ -13,8 +13,8 @@ Decomposição do `spec.md` em tarefas executáveis. Sequência respeita depend�
 ## 2. Camada de API (FastAPI)
 
 - [x] 2.1 Criar `api/` com app FastAPI e wiring do grafo + checkpointer. (Satisfaz D2)
-- [x] 2.2 Implementar `GET /board` (lista demandas). (Satisfaz RF-8.2)
-- [x] 2.3 Implementar `GET /board/{thread_id}` (detalhe; 404 se inexistente). (Satisfaz RF-8.2)
+- [x] 2.2 Implementar `GET /tasks` (lista demandas). (Satisfaz RF-8.2)
+- [x] 2.3 Implementar `GET /tasks/{thread_id}` (detalhe; 404 se inexistente). (Satisfaz RF-8.2)
 - [x] 2.4 Implementar `POST /resume` (aprova/rejeita HITL via `Command(resume=...)`). (Satisfaz RF-5.2, RF-5.3)
 - [x] 2.5 Implementar `POST /intake` (injeta nova demanda; valida texto não vazio). (Satisfaz RF-1.1)
 - [x] 2.6 Implementar `GET /auditoria` (classificações registradas). (Satisfaz RNF-6)
@@ -42,8 +42,8 @@ Decomposição do `spec.md` em tarefas executáveis. Sequência respeita depend�
 ## 5. Integração console ↔ API
 
 - [x] 5.1 Criar cliente HTTP no frontend para consumir a API FastAPI. (Satisfaz D2)
-- [x] 5.2 Conectar a tela de Board ao `GET /board`. (Satisfaz RF-9.1)
-- [x] 5.3 Conectar a tela de Detalhe ao `GET /board/{thread_id}` e `POST /resume`. (Satisfaz RF-9.2)
+- [x] 5.2 Conectar a tela de Board ao `GET /tasks`. (Satisfaz RF-9.1)
+- [x] 5.3 Conectar a tela de Detalhe ao `GET /tasks/{thread_id}` e `POST /resume`. (Satisfaz RF-9.2)
 - [x] 5.4 Conectar a tela de Intake ao `POST /intake`. (Satisfaz RF-9.5)
 - [x] 5.5 Conectar a tela de Auditoria ao `GET /auditoria` e `POST /auditoria/heuristica`. (Satisfaz RF-9.6, RF-9.7)
 

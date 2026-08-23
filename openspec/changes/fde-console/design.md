@@ -25,7 +25,7 @@ Este change adiciona um **console web do FDE** (frontend Next.js) e uma **camada
 Reusa o blueprint comprovado do projeto `dados-governanca-mag/web` (Next.js App Router, shadcn/ui new-york, Radix, Tailwind v4, next-themes). Alternativas consideradas: Vite (SPA pura) — rejeitado por não reusar o padrão existente e dificultar evolução para auth/SSR.
 
 ### D2 — Camada de API: FastAPI no mesmo repo (`api/`)
-Adiciona `fastapi` + `uvicorn` ao runtime. Endpoints: `GET /board`, `GET /board/{thread_id}`, `POST /resume`, `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`. Alternativa: Flask — rejeitado (FastAPI é o padrão moderno, async, compatível com LangGraph).
+Adiciona `fastapi` + `uvicorn` ao runtime. Endpoints: `GET /tasks`, `GET /tasks/{thread_id}`, `POST /resume`, `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`. Alternativa: Flask — rejeitado (FastAPI é o padrão moderno, async, compatível com LangGraph).
 
 ### D3 — Registro de classificação: novo campo `classificacao_intake` no BoardState
 O Intake passa a registrar `dominio`, `ambiguidade`, `justificativa` (palavras-chave) e `timestamp` por demanda. Alternativas: tabela separada (fragmenta o modelo "checkpointer = board"); derivar do `get_state_history` (frágil).

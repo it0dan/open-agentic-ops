@@ -5,7 +5,7 @@ A squad Open Agentic Ops opera o ciclo de vida de Open Finance com um único FDE
 ## What Changes
 
 - **Novo console web do FDE** (`frontend/`): Next.js + React + TypeScript + shadcn/ui + Tailwind v4 + next-themes, seguindo o brand book Sensedia (paleta roxa/laranja/azul, Montserrat + Roboto Mono, corners ≤7pt, dark/light).
-- **Nova camada de API** (`api/`): FastAPI expondo o grafo LangGraph — `GET /board`, `GET /board/{thread_id}`, `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`.
+- **Nova camada de API** (`api/`): FastAPI expondo o grafo LangGraph — `GET /tasks`, `GET /tasks/{thread_id}`, `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`.
 - **Extensão do runtime Python**: novo campo `classificacao_intake` no `BoardState`; Intake passa a registrar classificação + justificativa; endpoint de correção prospectiva da heurística; correção de `BoardView.pending()` para listar threads do checkpointer automaticamente.
 - **Tela de login** desenhada (auth mockada no MVP; OIDC como caminho futuro).
 - **Skill de frontend** (`frontend-sensedia`) incorporando o brand book como Guia do Feature Agent frontend.

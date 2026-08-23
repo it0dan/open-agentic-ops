@@ -15,6 +15,7 @@ import {
 
 const FLUXO: Status[] = [
   "triado",
+  "aguardando_autoria",
   "spec_pronta",
   "em_implementacao",
   "em_revisao",
@@ -28,7 +29,7 @@ const FLUXO: Status[] = [
 function ColumnCard({ demanda }: { demanda: Demanda }) {
   return (
     <Link
-      href={`/registry/${demanda.thread_id}`}
+      href={`/tasks/${demanda.thread_id}`}
       className="block rounded-xl border border-border/60 bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex flex-wrap items-center gap-1.5">
@@ -52,7 +53,7 @@ function ColumnCard({ demanda }: { demanda: Demanda }) {
   );
 }
 
-export function ColumnRegistry({ demandas }: { demandas: Demanda[] }) {
+export function ColumnTasks({ demandas }: { demandas: Demanda[] }) {
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
 
   const porColuna = useMemo(() => {

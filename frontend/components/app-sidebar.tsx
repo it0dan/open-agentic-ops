@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   ClipboardList,
-  Inbox,
   LayoutDashboard,
   LogOut,
   SearchCheck,
@@ -31,9 +30,8 @@ import {
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/registry", label: "Registry", icon: ClipboardList },
+  { href: "/tasks", label: "Tasks", icon: ClipboardList },
   { href: "/graph", label: "Graph", icon: Activity },
-  { href: "/intake", label: "Intake", icon: Inbox },
   { href: "/audit", label: "Audit", icon: SearchCheck },
 ];
 

@@ -154,7 +154,7 @@ export default function DashboardPage() {
             Últimas demandas
           </h2>
           <Link
-            href="/registry"
+            href="/tasks"
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             Ver demandas <ArrowRight className="size-3.5" />
@@ -164,7 +164,7 @@ export default function DashboardPage() {
           {destaque.slice(0, 3).map((d) => (
             <Link
               key={d.thread_id}
-              href={`/registry/${d.thread_id}`}
+              href={`/tasks/${d.thread_id}`}
               className="card-elevated card-hover group flex items-center justify-between gap-3 rounded-2xl p-4"
             >
               <p className="line-clamp-2 text-sm font-medium">{d.spec}</p>

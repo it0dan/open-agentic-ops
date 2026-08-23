@@ -20,6 +20,7 @@ vi.mock("next/link", () => ({
 vi.mock("@/lib/api", () => ({
   obterDemanda: vi.fn(),
   aprovarDemanda: vi.fn(),
+  autorarSpec: vi.fn(),
 }));
 
 import { aprovarDemanda, obterDemanda } from "@/lib/api";

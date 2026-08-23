@@ -205,6 +205,127 @@ def _levar_ate_sre(app, thread_id: str) -> dict:
     return app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
 
 
+def _levar_ate_monitorado(
+    app,
+    thread_id: str,
+    spec: str,
+    *,
+    origem: str = "regulatorio",
+    origem_subtipo: str | None = None,
+) -> dict:
+    """Dirige o fluxo feliz completo até `monitorado`.
+
+    Lida com os dois caminhos de ambiguidade: alta escala ao FDE (autoria da
+    spec via resume); baixa segue direto ao fan_out. Em ambos, o HITL é
+    aprovado e o fluxo percorre Eval → deploy → SRE.
+    """
+    config = {"configurable": {"thread_id": thread_id}}
+    payload: dict = {"origem": origem, "spec": spec}
+    if origem_subtipo is not None:
+        payload["origem_subtipo"] = origem_subtipo
+
+    result = app.invoke(payload, config)
+
+    if result["ambiguidade"] == "alta":
+        result = app.invoke(
+            Command(resume={"spec": "Spec autorada pelo FDE."}),
+            config,
+        )
+
+    return app.invoke(
+        Command(resume={"decisao": "aprovado", "observacao": "ok"}),
+        config,
+    )
+
+
+def test_fluxo_estrategia_nova_funcionalidade_ate_monitorado():
+    app = build_graph().compile(checkpointer=build_dev_checkpointer())
+
+    result = _levar_ate_monitorado(
+        app,
+        "estrategia-nf-1",
+        "Lançar onboarding digital com verificação facial para novos clientes PJ.",
+        origem="estrategia",
+        origem_subtipo="nova_funcionalidade",
+    )
+
+    assert result["origem"] == "estrategia"
+    assert result["origem_subtipo"] == "nova_funcionalidade"
+    assert result["ambiguidade"] == "alta"
+    assert result["spec_autor"] == "fde"
+    assert result["status"] == "monitorado"
+    assert "resultado_monitoramento" in result
+
+
+def test_fluxo_estrategia_melhoria_ate_monitorado():
+    app = build_graph().compile(checkpointer=build_dev_checkpointer())
+
+    result = _levar_ate_monitorado(
+        app,
+        "estrategia-melhoria-1",
+        "Melhorar o tempo de resposta do dashboard para usuários PJ.",
+        origem="estrategia",
+        origem_subtipo="melhoria",
+    )
+
+    assert result["origem"] == "estrategia"
+    assert result["origem_subtipo"] == "melhoria"
+    assert result["ambiguidade"] == "baixa"
+    assert result["spec_autor"] == "intake"
+    assert result["status"] == "monitorado"
+    assert "resultado_monitoramento" in result
+
+
+def test_fluxo_sre_via_criar_demanda_ate_monitorado():
+    threads_sre: list[str] = []
+
+    def monitorar() -> dict:
+        return {"slo_ok": False, "error_budget": 0.09}
+
+    def criar_demanda(texto: str) -> str:
+        thread_id = f"sre-gerada-{len(threads_sre) + 1}"
+        threads_sre.append(thread_id)
+        config = {"configurable": {"thread_id": thread_id}}
+        app.invoke(
+            {
+                "thread_id": thread_id,
+                "origem": "sre",
+                "spec": texto,
+            },
+            config,
+        )
+        return thread_id
+
+    app = build_graph(
+        monitorar=monitorar,
+        criar_demanda=criar_demanda,
+    ).compile(checkpointer=build_dev_checkpointer())
+
+    result = _levar_ate_monitorado(
+        app,
+        "sre-origem-1",
+        "Nova Instrução Normativa do BCB altera o Manual de Escopo de Dados e "
+        "Serviços do Open Finance, introduzindo um campo ligado à portabilidade "
+        "de crédito consignado. CPF 424.242.424-00.",
+    )
+
+    assert result["status"] == "monitorado"
+    assert result["resultado_monitoramento"]["task_gerada"] is True
+    assert len(threads_sre) == 1
+
+    spawned = _levar_ate_monitorado(
+        app,
+        threads_sre[0],
+        "Degradação de SLO observada após deploy; investigar.",
+        origem="sre",
+    )
+
+    assert spawned["origem"] == "sre"
+    assert spawned["ambiguidade"] == "alta"
+    assert spawned["spec_autor"] == "fde"
+    assert spawned["status"] == "monitorado"
+
+
 def test_sre_registra_resultado_monitoramento_estruturado():
     app = build_graph().compile(checkpointer=build_dev_checkpointer())
     result = _levar_ate_sre(app, "sre-ok-1")

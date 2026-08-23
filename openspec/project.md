@@ -147,7 +147,7 @@ docs/sdd/feature-intakes/fde-console.md
 
 Feature intention:
 
-Console do FDE (painel de operação da squad): camada de API FastAPI (`api/`) + console web Next.js (`frontend/`) para ver o board, aprovar/rejeitar no HITL, injetar demanda manualmente e auditar/corrigir a heurística do Intake. Change ativo em `openspec/changes/fde-console/` (37/37 tasks concluídas, aguardando archive).
+Console do FDE (painel de operação da squad): camada de API FastAPI (`api/`) + console web Next.js (`frontend/`) para ver o board, aprovar/rejeitar no HITL, injetar demanda manualmente e auditar/corrigir a heurística do Intake. Change concluído e arquivado em `openspec/archive/2026-08-22-fde-console/` (37/37 tasks).
 
 Out of scope para esta feature:
 

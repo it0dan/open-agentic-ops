@@ -55,7 +55,7 @@ Python + LangGraph (orquestração) + LangSmith (observabilidade/avaliação) + 
 O console do FDE é composto por duas camadas no mesmo repositório:
 
 - **API** (`api/`): FastAPI expondo o grafo LangGraph. Endpoints: `GET /tasks`, `GET /tasks/{thread_id}`, `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`.
-- **Console** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Demandas (`/tasks`), Detalhe, Loops, Intake, Auditoria.
+- **Console** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Demandas (`/tasks`), Detalhe, Graph (`/graph`), Intake, Audit (`/audit`). Rotas legadas `/loops` e `/auditoria` redirecionam (307) para `/graph` e `/audit`.
 
 Para rodar localmente:
 

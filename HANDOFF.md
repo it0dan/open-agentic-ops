@@ -175,14 +175,50 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 | `redis` | desabilitado (aguarda infra) | `REDIS_URL` |
 | `sensedia-ai-gateway` | desabilitado (global quebrado) | — |
 
+## Trabalho em execução (sessão atual — CONCLUÍDO)
+
+**Tarefa:** "Fix: Alinhar nomenclatura ao CONTEXT.md, corrigir Loop vs Grafo, Board vs Kanban, validar jornada do FDE em Intake/Auditoria, unificar visual."
+
+### ✅ Concluído nesta sessão
+
+**Backend (Python) — completo e verde:**
+- **Grafo pausa na autoria de spec** (`src/open_agentic_ops/graph/__init__.py`): novo nó `autoria_spec` com `interrupt()` (ADR-0009); `_escala_fde` seta `status: aguardando_autoria`; aresta `escala_fde → autoria_spec → fan_out`.
+- **Novo status** `aguardando_autoria` em `src/open_agentic_ops/state/__init__.py`.
+- **API** (`api/main.py`): `POST /resume` aceita `spec` opcional e distingue HITL (`aprovado`) vs autoria (`spec`), com validação de cada caso.
+- **Testes** (`tests/test_graph.py`, `tests/test_api.py`): ajustados + novos testes de autoria.
+- **Validação:** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo.
+
+**Frontend (Next.js) — completo e verde:**
+- **Rotas movidas** (git mv): `loops/` → `graph/`, `auditoria/` → `audit/`; redirects de compatibilidade criados (`/loops`→`/graph`, `/auditoria`→`/audit`).
+- **Sidebar** (`components/app-sidebar.tsx`): Dashboard, Board (`/tasks`), Graph (`/graph`), Intake, Audit (`/audit`).
+- **Loop→Graph na hierarquia**: `loop-status.tsx` ("Squad Graph", "Ver graph completo"), `dashboard/page.tsx` (`/graph`), detalhe da demanda ("Execution loop"), `content-container.tsx` (fullWidth `/graph`).
+- **Kanban removido da UI**: `kanban-board.tsx` → `column-board.tsx` (`ColumnBoard`/`ColumnCard`); `tasks/page.tsx` toggle "Lista/Colunas" com ícone `Columns3`.
+- **HITL gate no Graph**: `loop-canvas.tsx` — drawer do nó `hitl` mostra Aprovar/Rejeitar (via `aprovarDemanda`); nó `eval` mostra resultado; `LoopStage` estendido com `thread_id`/`resultado_eval`; `lib/loop-stages.ts` popula esses campos.
+- **Intake autoria de spec**: `intake/page.tsx` — seção "Autoria de spec (alta ambiguidade)" listando itens aguardando spec do FDE, com textarea + botão "Liberar para o grafo" chamando `autorarSpec` (POST /resume). `lib/api.ts` estendido (`ResumePayload.spec` + `autorarSpec`).
+- **Auditoria como calibração**: `audit/page.tsx` reescrito — métricas "% que o FDE manteria" / concordâncias / discordâncias (localStorage), tabela com botões "Manteria"/"Discordo", mantendo correção prospectiva da heurística (RNF-6).
+
+**Testes frontend — resolvidos e ampliados:**
+- **Bloqueio do teste de autoria do Intake resolvido** (`intake/page.test.tsx`): a causa raiz era o estado inicial `demandasMock` (com **2 itens** de alta ambiguidade + `spec_autor: "fde"`) renderizando 2 textareas antes do `useEffect` trocar para o mock da API (`[DEMANDA_ALTA]` = 1). Fix: o teste agora usa `waitFor` para aguardar o efeito resolver e conferir exatamente 1 textarea. Também tipado `DEMANDA_ALTA` como `Demanda` (corrige erro TS no build).
+- **`audit/page.test.tsx`** — já atualizado para o novo layout de calibração ("Manteria"/"Discordo"); passa.
+- **`tasks/page.test.tsx`** — adicionado teste do toggle "Colunas" (clica no botão e verifica que o `ColumnBoard` renderiza a coluna "Triado").
+- **Lint limpo**: removido prop `demandas` não utilizado de `loop-canvas.tsx` (e do caller `graph/page.tsx` + import órfão `type { Demanda }`).
+
+**Validação final:** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo; `npm run lint` → limpo; `npm run build` → OK; `npm test` → **15/15 passed**.
+
+**Docs atualizados:** `README.md` e `ARCHITECTURE.md` (telas Graph `/graph` e Audit `/audit`, redirects legados `/loops`→`/graph` e `/auditoria`→`/audit`).
+
+### Estado do git
+Working tree **sujo** (mudanças não commitadas). `git status` mostra: backend (`api/main.py`, `src/open_agentic_ops/graph/__init__.py`, `src/open_agentic_ops/state/__init__.py`, `tests/test_api.py`, `tests/test_graph.py`) + frontend (rotas movidas, sidebar, loop-canvas, loop-status, column-board, intake, audit, tasks, api.ts, loop-stages, testes) + docs (`README.md`, `ARCHITECTURE.md`, `HANDOFF.md`). Redirects novos em `app/(dashboard)/loops/` e `app/(dashboard)/auditoria/` (untracked). **Nada commitado ainda.**
+
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37). Redesign + evolução do console (Tasks, /loops, Kanban read-only, filtros por facet, metadados, mock populado) **concluídos e validados** (lint/build/test verdes, 12/12). **Change `fde-console` commitado e pusheado** para `origin/main` (4 commits: runtime, API, console, docs). Recurso REST da API renomeado para `/tasks` (com `/board` e `/demandas` mortos na API e redirects de compatibilidade no frontend). **Documentação revisada e atualizada** (commit `9c35708`). Working tree limpo.
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37). Redesign + evolução do console (Tasks, /loops, Kanban read-only, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: tarefa de nomenclatura/jornada do FDE CONCLUÍDA — backend e frontend prontos, testes/lint/build verdes (30 pytest + 15 vitest), docs atualizadas. Falta commitar e arquivar o change `fde-console`.**
 
-1. **Arquivar o change `fde-console`** no OpenSpec (`/opsx:archive fde-console` → `openspec/archive/<date>-fde-console/`), seguindo o padrão do projeto.
-2. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
-3. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
-4. **Definir os Guias concretos** (skills backend/frontend) para o nó Feature Agent.
+1. **Commitar as mudanças da sessão** (nomenclatura Loop→Graph, Board→Colunas, jornada do FDE em Intake/Auditoria, testes, docs) — working tree ainda sujo.
+2. **Arquivar o change `fde-console`** no OpenSpec (`/opsx:archive fde-console` → `openspec/archive/<date>-fde-console/`), seguindo o padrão do projeto.
+3. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), runner real de evals (PromptFoo + LangSmith), métricas reais de SLO no SRE.
+4. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+5. **Definir os Guias concretos** (skills backend/frontend) para o nó Feature Agent.
 
 ## Fontes-chave
 

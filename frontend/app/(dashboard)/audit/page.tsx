@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Plus, RefreshCcw, SearchCheck, ThumbsDown, ThumbsUp, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Plus, RefreshCcw, SearchCheck, ThumbsDown, ThumbsUp, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -34,6 +34,8 @@ import {
 import {
   corrigirHeuristica,
   listarAuditoria,
+  obterContadorAmbiguidade,
+  registrarAmbiguidadeKeyword,
   type ClassificacaoAuditoria,
 } from "@/lib/api";
 import { demandasMock } from "@/lib/mock-data";
@@ -74,6 +76,7 @@ export default function AuditPage() {
   const [categoria, setCategoria] = useState<Categoria>("alta_ambiguidade");
   const [palavra, setPalavra] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [contadorAmbiguidade, setContadorAmbiguidade] = useState(0);
 
   useEffect(() => {
     listarAuditoria()
@@ -81,6 +84,12 @@ export default function AuditPage() {
       .catch(() => {
         setClassificacoes(classificacoesMock);
       });
+  }, []);
+
+  useEffect(() => {
+    obterContadorAmbiguidade()
+      .then((r) => setContadorAmbiguidade(r.contador))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -96,6 +105,21 @@ export default function AuditPage() {
 
   function decidir(threadId: string, decisao: Decisao) {
     setDecisoes((prev) => ({ ...prev, [threadId]: decisao }));
+  }
+
+  async function registrarAmbiguidade(threadId: string) {
+    try {
+      const r = await registrarAmbiguidadeKeyword(threadId);
+      setContadorAmbiguidade(r.contador);
+      toast.info("Ambíguo demais para keyword", {
+        description:
+          "Sinal qualitativo registrado — não altera a heurística. Acumula como gatilho para evoluir para LLM.",
+      });
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Erro ao registrar ambiguidade.";
+      toast.error("Falha ao registrar ambiguidade", { description: msg });
+    }
   }
 
   async function corrigir(acao: "add" | "remove") {
@@ -131,7 +155,7 @@ export default function AuditPage() {
       />
 
       {/* Métrica de calibração */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="card-elevated">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">
@@ -165,6 +189,21 @@ export default function AuditPage() {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Sinalizam drift na heurística do Intake Agent
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">
+              Ambíguo demais p/ keyword
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="flex items-center gap-2 text-3xl font-bold tabular-nums text-purple-500">
+              <AlertTriangle className="size-5" /> {contadorAmbiguidade}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sinal qualitativo — gatilho para evoluir a heurística para LLM
             </p>
           </CardContent>
         </Card>
@@ -249,6 +288,15 @@ export default function AuditPage() {
                           className="h-8 gap-1 text-xs"
                         >
                           <X className="size-3.5" /> Discordo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => registrarAmbiguidade(c.thread_id)}
+                          className="h-8 gap-1 text-xs border-purple-500/40 text-purple-600 dark:text-purple-400"
+                          title="Ambíguo demais para keyword resolver — sinal qualitativo, não altera a heurística"
+                        >
+                          <AlertTriangle className="size-3.5" /> Ambíguo
                         </Button>
                       </div>
                     </TableCell>

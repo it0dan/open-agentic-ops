@@ -4,14 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/api", () => ({
   listarAuditoria: vi.fn(),
   corrigirHeuristica: vi.fn(),
+  obterContadorAmbiguidade: vi.fn(),
+  registrarAmbiguidadeKeyword: vi.fn(),
 }));
 
-import { listarAuditoria } from "@/lib/api";
+import { listarAuditoria, obterContadorAmbiguidade } from "@/lib/api";
 import AuditPage from "./page";
 
 describe("AuditPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(obterContadorAmbiguidade).mockResolvedValue({ contador: 0 });
   });
 
   it("renderiza as classificações vindas da API", async () => {

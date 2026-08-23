@@ -58,6 +58,13 @@ class HeuristicaBody(BaseModel):
     acao: Literal["add", "remove"]
 
 
+class AmbiguidadeBody(BaseModel):
+    thread_id: str | None = None
+
+
+_contador_ambig_nao_keyword = 0
+
+
 def create_app() -> FastAPI:
     """Monta o app FastAPI com o grafo compilado e o checkpointer (board)."""
     app = FastAPI(title="Open Agentic Ops — FDE Console API")
@@ -181,6 +188,16 @@ def create_app() -> FastAPI:
             conjunto.discard(palavra)
         salvar_heuristica(h)
         return _serializar_heuristica(h)
+
+    @app.get("/auditoria/ambigua")
+    def auditoria_ambigua() -> dict:
+        return {"contador": _contador_ambig_nao_keyword}
+
+    @app.post("/auditoria/ambigua")
+    def auditoria_ambigua_incrementa(body: AmbiguidadeBody) -> dict:
+        global _contador_ambig_nao_keyword
+        _contador_ambig_nao_keyword += 1
+        return {"contador": _contador_ambig_nao_keyword}
 
     return app
 

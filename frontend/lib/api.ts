@@ -94,3 +94,20 @@ export function corrigirHeuristica(payload: HeuristicaPayload): Promise<Heuristi
     body: JSON.stringify(payload),
   });
 }
+
+export interface ContadorAmbiguidade {
+  contador: number;
+}
+
+export function registrarAmbiguidadeKeyword(
+  threadId?: string,
+): Promise<ContadorAmbiguidade> {
+  return request<ContadorAmbiguidade>("/auditoria/ambigua", {
+    method: "POST",
+    body: JSON.stringify({ thread_id: threadId }),
+  });
+}
+
+export function obterContadorAmbiguidade(): Promise<ContadorAmbiguidade> {
+  return request<ContadorAmbiguidade>("/auditoria/ambigua");
+}

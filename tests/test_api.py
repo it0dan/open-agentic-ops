@@ -232,3 +232,23 @@ def test_heuristica_remove_palavra(client, restaurar_heuristica):
     )
     assert r.status_code == 200
     assert "api" not in r.json()["backend"]
+
+
+def test_auditoria_ambigua_incrementa_contador(client):
+    r0 = client.get("/auditoria/ambigua")
+    assert r0.status_code == 200
+    antes = r0.json()["contador"]
+
+    r = client.post("/auditoria/ambigua", json={"thread_id": "abc"})
+    assert r.status_code == 200
+    assert r.json()["contador"] == antes + 1
+
+    r2 = client.get("/auditoria/ambigua")
+    assert r2.json()["contador"] == antes + 1
+
+
+def test_auditoria_ambigua_nao_altera_heuristica(client, restaurar_heuristica):
+    antes = carregar_heuristica()
+    client.post("/auditoria/ambigua", json={})
+    depois = carregar_heuristica()
+    assert antes == depois

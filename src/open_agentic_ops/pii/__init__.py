@@ -40,15 +40,25 @@ _EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 _TELEFONE = re.compile(r"(?:\+?55[\s-]?)?(?:\(?\d{2}\)?[\s-]?)?\d{4,5}[\s-]?\d{4}\b")
 _DATA_NASC = re.compile(r"\b\d{2}/\d{2}/\d{4}\b")
 _CEP = re.compile(r"\b\d{5}-?\d{3}\b")
+_CHAVE_PIX = re.compile(
+    r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+)
+_CONTA_AGENCIA = re.compile(
+    r"(?:\bag(?:ência)?\s+\d{3,5}-\d{1,2}"
+    r"|\bconta\s+\d{3,10}-\d{1,2}"
+    r"|\b\d{3,5}-\d{1,2}/\d{3,10}-\d{1,2}\b)"
+)
 
 
 PADROES: tuple[PadraoPII, ...] = (
     PadraoPII(CategoriaPII.SENSIVEL, "CPF", _CPF, "[CPF]"),
     PadraoPII(CategoriaPII.SENSIVEL, "CNPJ", _CNPJ, "[CNPJ]"),
     PadraoPII(CategoriaPII.PESSOAL, "EMAIL", _EMAIL, "[EMAIL]"),
+    PadraoPII(CategoriaPII.SENSIVEL, "CHAVE_PIX", _CHAVE_PIX, "[CHAVE_PIX]"),
     PadraoPII(CategoriaPII.PESSOAL, "TELEFONE", _TELEFONE, "[TELEFONE]"),
     PadraoPII(CategoriaPII.SENSIVEL, "DATA_NASCIMENTO", _DATA_NASC, "[DATA_NASC]"),
     PadraoPII(CategoriaPII.PESSOAL, "CEP", _CEP, "[CEP]"),
+    PadraoPII(CategoriaPII.SENSIVEL, "CONTA_BANCARIA", _CONTA_AGENCIA, "[CONTA]"),
 )
 
 

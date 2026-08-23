@@ -35,3 +35,27 @@ def test_detecta_pii_classifica_lgpd():
     categorias = {c.value for c, _ in encontradas}
     assert "sensivel" in categorias
     assert "pessoal" in categorias
+
+
+def test_redige_chave_pix_uuid():
+    texto = "chave pix 123e4567-e89b-12d3-a456-426614174000"
+    saida = redigir_texto(texto)
+    assert "[CHAVE_PIX]" in saida
+    assert "123e4567-e89b-12d3-a456-426614174000" not in saida
+
+
+def test_redige_conta_agencia():
+    texto = "ag 1234-5 conta 56789-0"
+    saida = redigir_texto(texto)
+    assert "[CONTA]" in saida
+    assert "1234-5" not in saida
+    assert "56789-0" not in saida
+
+
+def test_detecta_pii_financeiro_classifica_sensivel():
+    encontradas = detectar_pii("chave 123e4567-e89b-12d3-a456-426614174000 ag 1234-5 conta 56789-0")
+    rotulos = {r for _, r in encontradas}
+    assert "CHAVE_PIX" in rotulos
+    assert "CONTA_BANCARIA" in rotulos
+    categorias = {c.value for c, _ in encontradas}
+    assert "sensivel" in categorias

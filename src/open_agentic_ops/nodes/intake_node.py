@@ -30,6 +30,9 @@ def intake_node(state: BoardState) -> BoardState:
 
     return {
         "origem": origem,
+        "origem_subtipo": state.get("origem_subtipo"),
+        "prioridade": state.get("prioridade", "media"),
+        "titulo": state.get("titulo"),
         "spec": spec,
         "domino": dominio,
         "ambiguidade": ambiguidade,

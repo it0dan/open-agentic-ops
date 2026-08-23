@@ -11,6 +11,17 @@ import operator
 from typing import Annotated, Literal, TypedDict
 
 Origem = Literal["cliente", "regulatorio", "estrategia", "sre"]
+OrigemSubtipo = Literal[
+    "pedido",
+    "incidente",
+    "norma",
+    "instrucao_normativa",
+    "nova_funcionalidade",
+    "melhoria",
+    "bug",
+    "performance",
+]
+Prioridade = Literal["alta", "media", "baixa"]
 Ambiguidade = Literal["baixa", "alta"]
 SpecAutor = Literal["intake", "fde"]
 Dominio = Literal["backend", "frontend", "ambos"]
@@ -68,6 +79,9 @@ class ClassificacaoIntake(TypedDict):
 
 class BoardState(TypedDict, total=False):
     origem: Origem
+    origem_subtipo: OrigemSubtipo | None
+    prioridade: Prioridade
+    titulo: str | None
     ambiguidade: Ambiguidade
     spec_autor: SpecAutor
     spec: str

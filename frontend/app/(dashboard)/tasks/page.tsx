@@ -23,12 +23,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listarDemandas } from "@/lib/api";
+import { useDemandasPolling } from "@/hooks/use-demandas-polling";
 import {
   DOMINIO_LABEL,
   ORIGEM_LABEL,
-  demandasMock,
-  type Demanda,
   type Dominio,
   type Origem,
 } from "@/lib/mock-data";
@@ -62,23 +60,8 @@ const FILTER_GROUPS: FilterGroup[] = [
   },
 ];
 
-const POLL_INTERVAL = 4000;
-
-function simularTick(d: Demanda): Demanda {
-  if (d.progresso === undefined || d.progresso >= 100) return d;
-  const incremento = d.status === "aguardando_hitl" ? 0 : 3;
-  const novoProgresso = Math.min(100, d.progresso + incremento);
-  return {
-    ...d,
-    progresso: novoProgresso,
-    atualizado_em: new Date().toISOString(),
-  };
-}
-
 export default function BoardPage() {
-  const [demandas, setDemandas] = useState<Demanda[]>(demandasMock);
-  const [carregando, setCarregando] = useState(true);
-  const [usandoMock, setUsandoMock] = useState(false);
+  const { demandas, carregando } = useDemandasPolling();
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<
     Record<string, Set<string>>
@@ -93,39 +76,6 @@ export default function BoardPage() {
   useEffect(() => {
     localStorage.setItem("fde-visao-demandas", visao);
   }, [visao]);
-
-  useEffect(() => {
-    let ativo = true;
-    async function buscar() {
-      try {
-        const data = await listarDemandas();
-        if (!ativo) return;
-        setDemandas(data);
-        setUsandoMock(false);
-      } catch {
-        if (!ativo) return;
-        setDemandas(demandasMock);
-        setUsandoMock(true);
-      } finally {
-        if (ativo) setCarregando(false);
-      }
-    }
-    buscar();
-    const id = setInterval(buscar, POLL_INTERVAL);
-    return () => {
-      ativo = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  // Simulação de avanço quando usando mock (loop vivo)
-  useEffect(() => {
-    if (!usandoMock) return;
-    const id = setInterval(() => {
-      setDemandas((prev) => prev.map(simularTick));
-    }, POLL_INTERVAL);
-    return () => clearInterval(id);
-  }, [usandoMock]);
 
   const filtradas = useMemo(() => {
     return demandas.filter((d) => {

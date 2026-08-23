@@ -29,6 +29,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { POLL_INTERVAL } from "@/hooks/use-demandas-polling";
 import { aprovarDemanda, obterDemanda } from "@/lib/api";
 import {
   DOMINIO_LABEL,
@@ -72,8 +73,6 @@ function criadoPor(d: Demanda): string {
 function prioridade(d: Demanda): "Alta" | "Baixa" {
   return d.ambiguidade === "alta" ? "Alta" : "Baixa";
 }
-
-const POLL_INTERVAL = 4000;
 
 export default function DetalhePage() {
   const params = useParams<{ threadId: string }>();

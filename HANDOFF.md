@@ -24,7 +24,63 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry → Tasks** (rota `/tasks`, redirects 307 de `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`TasksPage`, `ColumnTasks`). **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec movida para o detalhe da demanda.** 8 commits aguardando push para `origin/main`.
 
-**Validação (estado atual):** `poetry run pytest` → **40 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **14/14 passed**.
+**Validação (estado atual):** `poetry run pytest` → **47 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
+
+## Trabalho desta sessão (gates condicionais + decisão tipada do FDE + fix do modal)
+
+**Tarefa:** implementar o item 1 dos próximos passos — roteamento condicional dos gates (ADR-0017) — corrigindo o bug "gates não gateiam", com a decisão do FDE tipada (naming melhor que `com_ressalvas`) e o fix do modal de nova demanda (não fechava por ESC/clique-fora).
+
+### ✅ Concluído
+
+**Backend (Python):**
+- `src/open_agentic_ops/state/__init__.py` — `Status` ganhou `"rejeitado"` (terminal); novo tipo `DecisaoFDE = Literal["aprovado", "aprovado_com_ressalvas", "rejeitado"]`; `DecisaoHitl` reescrito de `{aprovado, comentario}` para `{decisao, observacao}` (elimina flags booleanas paralelas e o estado inconsistente).
+- `src/open_agentic_ops/gates/hitl_gate.py` — lê `decisao` do payload do `interrupt()`; retorna `status: "rejeitado"` se rejeitado, senão `"aprovado"` (corrige o rótulo obsoleto `aguardando_hitl` no branch reprovado).
+- `src/open_agentic_ops/gates/eval_gate.py` — branch reprovado agora seta `status: "aguardando_hitl"` (volta ao gate), em vez de `"em_revisao"`.
+- `src/open_agentic_ops/graph/__init__.py` — novo nó `deploy` (factory `make_deploy_node`, chama tool `deploy` via `ToolExecutionPort`, stub); rotas `route_by_hitl_decision` e `route_by_eval_result`; arestas condicionais `hitl → {aprovado: eval, rejeitado: END}` e `eval → {aprovado: deploy, reprovado: hitl}`; `deploy → sre`; `build_graph` ganhou `eval_runner` injetável (para testes de reprovação).
+- `api/main.py` — `ResumeBody` trocou `aprovado`/`comentario` por `decisao`/`observacao` (**contrato quebrado**, decisão alinhada com o usuário); `resume_endpoint` valida `decisao` no caminho HITL; `_FLUXO_STATUS` e `_AGENTE_POR_STATUS` ganharam `rejeitado` (agente "FDE").
+
+**Frontend (Next.js):**
+- `frontend/lib/mock-data.ts` — `Status`/`STATUS_LABEL` ganharam `rejeitado`; `DecisaoHitl` reescrito para `{decisao, observacao}`; 9 mocks `decisao_hitl` atualizados.
+- `frontend/lib/api.ts` — `ResumePayload` com `decisao`/`observacao`.
+- `frontend/components/column-tasks.tsx` e `app/(dashboard)/tasks/[threadId]/page.tsx` — `rejeitado` no `FLUXO`; painel HITL com **3 botões** (Aprovar / Aprovar com ressalvas + campo de observação / Rejeitar); badge de decisão por `decisao` (3 estados, com observação).
+- `frontend/components/loop-canvas.tsx` — contrato `aprovarDemanda` atualizado.
+- `frontend/components/status-badge.tsx` — estilo de `rejeitado`.
+
+**Fix do modal de nova demanda (bug):**
+- `frontend/components/resizable-dialog.tsx` — **causa raiz:** o `ResizableDialogContent` era um `div` avulso dentro do `DialogPortal`, sem usar o `DialogPrimitive.Content` do Radix; por isso o Radix não interceptava ESC nem clique-fora. Troquei o elemento base de `div` para `DialogPrimitive.Content` (mantendo o resize), conectando o dismiss ao `onOpenChange`.
+
+**Testes:**
+- `tests/test_graph.py` — novos: HITL rejeitado termina o grafo (não chega a eval); aprovado com ressalvas segue ao eval; eval reprovado volta ao HITL (via `eval_runner` injetado) e re-aprovação segue ao deploy.
+- `tests/test_api.py` — atualizados para `decisao`/`observacao`; novos: rejeita demanda, aprova com ressalvas.
+- `frontend/components/nova-demanda-modal.test.tsx` — novos: fecha por ESC e por clique no overlay (via `userEvent.pointer`).
+
+**Validação:** `poetry run pytest` → **45 passed**; `poetry run ruff check .` → limpo; `npm run lint` → limpo; `npm run build` → OK; `npm test` → **19/19 passed**.
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `src/open_agentic_ops/state/__init__.py`, `gates/hitl_gate.py`, `gates/eval_gate.py`, `graph/__init__.py`, `api/main.py`, `tests/test_graph.py`, `tests/test_api.py`, `frontend/lib/mock-data.ts`, `frontend/lib/api.ts`, `frontend/components/column-tasks.tsx`, `frontend/components/loop-canvas.tsx`, `frontend/components/status-badge.tsx`, `frontend/components/resizable-dialog.tsx`, `frontend/components/nova-demanda-modal.test.tsx`, `frontend/app/(dashboard)/tasks/[threadId]/page.tsx`, `HANDOFF.md`
+- Novos: (nenhum arquivo novo nesta sessão)
+
+## Trabalho desta sessão (SRE real — ADR-0019)
+
+**Tarefa:** implementar o item 2 dos próximos passos — SRE real (ADR-0019): `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando estruturalmente o loop ADR-0010.
+
+### ✅ Concluído
+
+**Backend (Python):**
+- `src/open_agentic_ops/state/__init__.py` — novo `ResultadoMonitoramento` (`task_gerada`, `motivo`, `descricao_task`, `metricas_brutas`); `BoardState` trocou `sre_task_gerada: bool` por `resultado_monitoramento: ResultadoMonitoramento`.
+- `src/open_agentic_ops/nodes/sre_node.py` — reescrito: reasoner `julgar(metricas)` produz o `ResultadoMonitoramento` estruturado com `motivo` **sempre presente** (mesmo quando não gera task, sustentando a auditoria de "não agir"); novo port `criar_demanda: Callable[[str], str] | None` que realimenta o Intake quando `task_gerada=True`. Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM (ADR-0016 camada 2).
+- `src/open_agentic_ops/graph/__init__.py` — `build_graph` ganhou `criar_demanda` e `monitorar` (injetáveis para testes), repassados ao `make_sre_node`.
+- `api/main.py` — `create_app()` wirea o port `criar_demanda` (closure que gera `thread_id` e invoca o grafo com `origem="sre"`, mesmo caminho do `POST /intake`); `_detalhe` expõe `resultado_monitoramento`.
+
+**Testes:**
+- `tests/test_graph.py` — novos: SRE registra `resultado_monitoramento` estruturado no fluxo feliz (task_gerada=False, motivo presente); SRE gera task e dispara o port `criar_demanda` (via `monitorar` injetado com `slo_ok=False`). Assert do teste de rejeição atualizado (`sre_task_gerada` → `resultado_monitoramento`).
+
+**Validação:** `poetry run pytest` → **47 passed**; `poetry run ruff check .` → limpo. Frontend não requer mudanças (usa mock; status `monitorado` já existia).
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `src/open_agentic_ops/state/__init__.py`, `nodes/sre_node.py`, `graph/__init__.py`, `api/main.py`, `tests/test_graph.py`, `HANDOFF.md`
 
 ## Trabalho desta sessão (campos estruturados na criação de demanda)
 
@@ -387,11 +443,11 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** 8 commits aguardando push para `origin/main`.
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** Tudo commitado e pusheado para `origin/main`.
 
-1. **Roteamento condicional dos gates (ADR-0017)** — corrigir o bug "gates não gateiam": arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganha `rejeitado` + `pending()` inclui `aguardando_autoria`.
-2. **SRE real (ADR-0019)** — `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API (fecha o loop ADR-0010).
-3. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra.
+1. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
+2. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
+3. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra. **PRÓXIMO PASSO.**
 4. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
 5. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
 6. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.

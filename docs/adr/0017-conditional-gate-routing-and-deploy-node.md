@@ -44,3 +44,22 @@ Não há risco de loop infinito automático: o retorno a `hitl` sempre passa por
 - `hitl_gate.py` corrige o retorno do branch reprovado: deixa de usar `aguardando_hitl` (rótulo obsoleto, descreve "ainda esperando" quando o `interrupt()` já foi resolvido) e passa a retornar `rejeitado`.
 - O nó `deploy` é stub até a infra de deploy existir (chama `call_tool("deploy", ...)` via Platform).
 - Risco de loop manual de re-aprovação aceito e registrado.
+
+## Implementação (2026-08-23)
+
+A decisão do FDE foi implementada como **campo tipado** `decisao` em vez de flags booleanas paralelas (`aprovado` + `com_ressalvas` + `comentario`), evitando estados inconsistentes:
+
+```python
+DecisaoFDE = Literal["aprovado", "aprovado_com_ressalvas", "rejeitado"]
+
+class DecisaoHitl(TypedDict):
+    decisao: DecisaoFDE
+    observacao: str | None
+```
+
+- `decisao` é um valor único e exclusivo — elimina o estado inconsistente de múltiplos booleans.
+- `observacao` cobre tanto a ressalva (aprovado com ressalvas) quanto o motivo da rejeição — um campo só.
+- O roteamento fica trivial: `route_by_hitl_decision` checa `decisao == "rejeitado"` → END; qualquer outro → eval.
+- O contrato do `POST /resume` foi **quebrado** (MVP, frontend próprio): `aprovado`/`comentario` → `decisao`/`observacao`.
+- `build_graph` ganhou `eval_runner` injetável para testar o caminho de reprovação do Eval.
+- O nó `deploy` é uma factory (`make_deploy_node`) que chama a tool `deploy` via `ToolExecutionPort` (stub).

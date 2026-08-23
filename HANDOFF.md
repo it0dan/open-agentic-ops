@@ -6,6 +6,8 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Grafo LangGraph implementado e versionado** (change `squad-open-agentic-ops`, 24/24 tasks, arquivado em `openspec/archive/2026-08-22-squad-open-agentic-ops/`). O repo contém a fundação documental (arquitetura, ADRs, glossário, pipeline SDD/SPDD) e o **código Python funcional** da squad: scaffold Poetry, portas hexagonais, modelo de estado, persistência (checkpointer = board), redação PII, nós e gates, montagem do grafo, observabilidade e testes. **Commitado e pusheado** para `origin/main` (commit `1f2ec8d`).
 
+**Loop goal-based do Feature Agent implementado** (change `feature-agent-loop`, ADR-0016, arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`). O `feature_node` agora opera como goal-based loop: itera até test/lint passarem (goal determinístico) ou até o teto de iterações, com PII como hook determinístico sobre a saída e o contexto realimentado, e o `Guia` expondo `ferramentas` + `checklist`. Camada 1 (harness) implementada e testável com stubs; Camada 2 (integração real LLM/MCP) depende de infra. **Validado: 38 passed, ruff limpo.**
+
 **Change `fde-console` (console do FDE):** proposta, design, spec e tasks criados (37 tasks). **Grupos 1–7 concluídos (37/37):** runtime (heurística mutável, `classificacao_intake`, BoardView), API FastAPI (`api/main.py`), console Next.js, telas, integração console↔API, skill `frontend-sensedia` e testes/validação (incluindo ADR-0014). **Redesign visual completo (dark-first + glassmorphism) concluído.** **Arquivado em `openspec/archive/2026-08-22-fde-console/` e pusheado para `origin/main`.**
 
 **Evolução do console (sessões recentes) — concluída e validada:**
@@ -22,7 +24,7 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Sessão atual (refactor + docs):** polling de demandas consolidado no hook `useDemandasPolling` (DRY, `POLL_INTERVAL` único); tela **Board → Registry** (rota `/registry`, redirects 307 de `/tasks` e `/board`); decisão pendente sobre topologia real do Graph registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`; bullet de marketing do login corrigido e naming interno alinhado (`RegistryPage`, `ColumnRegistry`). 5 commits pusheados para `origin/main`.
 
-**Validação (estado atual):** `poetry run pytest` → **30 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **15/15 passed**; smoke test das rotas (`/login`, `/dashboard`, `/registry`, `/graph`, `/audit`, detalhe → 200; `/board`, `/tasks`, `/loops`, `/auditoria` → 307 redirect).
+**Validação (estado atual):** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **15/15 passed**; smoke test das rotas (`/login`, `/dashboard`, `/registry`, `/graph`, `/audit`, detalhe → 200; `/board`, `/tasks`, `/loops`, `/auditoria` → 307 redirect).
 
 ## Trabalho desta sessão (encerramento)
 
@@ -69,6 +71,58 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 - Naming interno: `BoardPage` → `RegistryPage`; `ColumnBoard` → `ColumnRegistry` (arquivo `column-registry.tsx`); teste atualizado.
 
 **Validação:** `npm run lint` limpo; `npm run build` OK (rotas `/registry` reais, `/tasks`/`/board` como redirects); `npm test` → **15/15 passed**. Working tree limpo, tudo commitado e pusheado para `origin/main`.
+
+## Trabalho desta sessão (loop goal-based do Feature Agent)
+
+**Tarefa:** implementar o harness do loop goal-based do Feature Agent (ADR-0016), seguindo o playbook SDD.
+
+### ✅ Concluído
+
+**Playbook SDD:**
+- `docs/sdd/feature-intakes/feature-agent-loop.md` — Feature Intake Brief criado.
+- Change OpenSpec `feature-agent-loop` criado e validado (`proposal.md`, `design.md`, `specs/feature-agent-loop/spec.md`, `tasks.md`), **arquivado** em `openspec/archive/2026-08-23-feature-agent-loop/` (padrão do projeto, não `openspec/changes/archive/`). Spec principal criada em `openspec/specs/feature-agent-loop/spec.md`.
+
+**Implementação (Camada 1 — harness):**
+- `src/open_agentic_ops/nodes/guia.py` — `Guia` estendido com `ferramentas` e `checklist` por domínio (backend/frontend/fullstack).
+- `src/open_agentic_ops/state/__init__.py` — `Worktree` ganhou `iteracoes` e `historico` (resultado de test/lint por tentativa).
+- `src/open_agentic_ops/nodes/feature_node.py` — reescrito como **goal-based loop**: itera até test/lint passarem (goal determinístico) ou até `max_iteracoes` (default 3); PII como hook determinístico (`redigir_texto`) sobre a saída e o contexto realimentado; `tools` e `max_iteracoes` como parâmetros; fallbacks determinísticos mantidos.
+- `src/open_agentic_ops/graph/__init__.py` — `build_graph` repassa `tools` aos dois feature nodes.
+
+**Bug corrigido durante a implementação:** o campo `pii_encontrada_no_loop` adicionado ao `BoardState` causava `InvalidUpdateError` (escrito por 2 nós em paralelo no fan-out, sem reducer Annotated). Removido do retorno e do estado — a informação já vive no `historico` do worktree (campo `Annotated` com append).
+
+**Testes:** `tests/test_feature_loop.py` — 8 testes do harness (goal na 1ª tentativa, goal após correções, teto respeitado, PII na saída, PII no contexto realimentado, Guia com ferramentas/checklist, worktree com metadados, fallback sem providers).
+
+**Validação:** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo.
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `src/open_agentic_ops/graph/__init__.py`, `nodes/feature_node.py`, `nodes/guia.py`, `state/__init__.py`
+- Novos: `docs/sdd/feature-intakes/feature-agent-loop.md`, `openspec/archive/2026-08-23-feature-agent-loop/`, `openspec/specs/`, `tests/test_feature_loop.py`
+
+## Trabalho desta sessão (fixes do console + HITL)
+
+**Tarefa:** validar o console no navegador e corrigir problemas de UX/fluxo encontrados no teste manual.
+
+### ✅ Concluído
+
+**Backend:**
+- **CORS na API** (`api/main.py`): o frontend (localhost:3000) fazia requisições cross-origin para a API (127.0.0.1:8000) e o preflight `OPTIONS` retornava 405. Adicionado `CORSMiddleware` permitindo as origens locais do console.
+- **Nó `marcar_hitl`** (`graph/__init__.py`): o `hitl_gate` pausa via `interrupt()` antes de setar o status, então durante a pausa o status permanecia `em_revisao` (do `_fan_in`) — o painel HITL do frontend (que usa `status === "aguardando_hitl"`) não aparecia. Adicionado nó de transição que seta `aguardando_hitl` antes do gate, no mesmo padrão de `_escala_fde` → `_autoria_spec`. Aresta: `review → marcar_hitl → hitl`.
+
+**Frontend:**
+- **Status `aguardando_autoria`**: adicionado ao tipo `Status`, `STATUS_LABEL`, `StatusBadge` e ao `FLUXO` do detalhe. Demanda de alta ambiguidade parada na autoria de spec não fica mais "presa" em 0%.
+- **Indicador de modo demo** no Registry: banner âmbar quando a API está indisponível (dados sintéticos).
+- **Botão "Nova demanda" removido** do Registry (criação fica só no Intake).
+- **Fix "not found" no detalhe**: estado de carregamento (skeletons) antes de `notFound()`, para demandas criadas (não presentes no mock).
+- **Textos HITL esclarecidos**: painel HITL e Intake agora comunicam que o gate revisa o **resultado** da implementação (worktrees/ADRs/feedbacks), não a criação da demanda.
+
+**Validação:** `poetry run pytest` → **38 passed**; `poetry run ruff check .` → limpo; `npm run lint` → limpo; `npm run build` → OK; `npm test` → **15/15 passed**.
+
+### Estado do git
+Commits coesos criados nesta sessão:
+- `b86cf74` — `feat(runtime)`: loop goal-based do Feature Agent (ADR-0016)
+- `79addd7` — `fix(api)`: habilitar CORS para o console do FDE
+- `6e13bfe` — `fix(console)`: representar aguardando_autoria, modo demo e corrigir detalhe
 
 ## Decisões fechadas
 
@@ -174,6 +228,10 @@ Revisão do documento `Inicio/open-agentic-ops-definicao-oferta (3).md` via gril
 | `docs/sdd/feature-start-playbook.md` | Playbook de início de feature (portado/adaptado) |
 | `docs/sdd/feature-intake-template.md` | Template de Feature Intake Brief (portado/adaptado) |
 | `docs/sdd/feature-intakes/graph-topologia-real.md` | Intake registrando a decisão pendente sobre a topologia real do Graph (fan-out/fan-in + SRE→Intake) |
+| `docs/sdd/feature-intakes/feature-agent-loop.md` | Intake do loop goal-based do Feature Agent (ADR-0016) |
+| `openspec/archive/2026-08-23-feature-agent-loop/` | Change do loop goal-based do Feature Agent (arquivado) |
+| `openspec/specs/feature-agent-loop/spec.md` | Spec principal do loop goal-based (6 requisitos) |
+| `tests/test_feature_loop.py` | Testes do harness do loop goal-based (8 testes) |
 | `.opencode/commands/opsx-*.md` | Comandos `/opsx:*` (explore, propose, apply, archive) |
 | `.opencode/skills/openspec-*/` | Skills OpenSpec (explore, propose, apply-change, archive-change) |
 | `src/open_agentic_ops/` | Código Python da squad (ports, state, persistence, pii, nodes, gates, graph, observability) |
@@ -267,15 +325,14 @@ Working tree **limpo**. Tudo commitado e pusheado para `origin/main` em 3 commit
 
 ## Próximos passos
 
-> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Registry, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. **SESSÃO ATUAL: revisão da definição da oferta (`Inicio/open-agentic-ops-definicao-oferta (3).md`) via grilling — 30 decisões fechadas (Q1–Q30), registradas em ADRs 0015–0019 + ADR-0005 atualizado + CONTEXT.md + openspec/project.md. Nenhum código alterado.**
+> **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Registry, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.**
 
-1. **Loop goal-based do Feature Agent (ADR-0016)** — próxima feature recomendada (`feature-agent-loop`). Harness do loop (goal = test/lint passando, teto de iterações, PII como hook determinístico, Guia com campo de ferramentas) implementável agora com stubs; integração real (LLM + MCP) depende de infra. É o achado central da definição da oferta e destrava Architecture dinâmico e Review real.
-2. **Roteamento condicional dos gates (ADR-0017)** — corrigir o bug "gates não gateiam": arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganha `rejeitado` + `pending()` inclui `aguardando_autoria`.
-3. **SRE real (ADR-0019)** — `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API (fecha o loop ADR-0010).
-4. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra.
-5. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE.
-6. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
-7. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
+1. **Roteamento condicional dos gates (ADR-0017)** — corrigir o bug "gates não gateiam": arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganha `rejeitado` + `pending()` inclui `aguardando_autoria`.
+2. **SRE real (ADR-0019)** — `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API (fecha o loop ADR-0010).
+3. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra.
+4. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
+5. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+6. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
 
 ## Fontes-chave
 

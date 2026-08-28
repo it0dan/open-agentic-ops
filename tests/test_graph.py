@@ -282,13 +282,14 @@ def test_fluxo_sre_via_criar_demanda_ate_monitorado():
     def monitorar() -> dict:
         return {"slo_ok": False, "error_budget": 0.09}
 
-    def criar_demanda(texto: str) -> str:
+    def criar_demanda(texto: str, tenant_id: str) -> str:
         thread_id = f"sre-gerada-{len(threads_sre) + 1}"
         threads_sre.append(thread_id)
         config = {"configurable": {"thread_id": thread_id}}
         app.invoke(
             {
                 "thread_id": thread_id,
+                "tenant_id": tenant_id,
                 "origem": "sre",
                 "spec": texto,
             },
@@ -344,7 +345,7 @@ def test_sre_gera_task_e_dispara_port_criar_demanda():
     def monitorar() -> dict:
         return {"slo_ok": False, "error_budget": 0.09}
 
-    def criar_demanda(texto: str) -> str:
+    def criar_demanda(texto: str, tenant_id: str) -> str:
         chamadas.append(texto)
         return "nova-thread-sre"
 

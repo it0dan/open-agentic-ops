@@ -46,15 +46,15 @@ def julgar(metricas: dict) -> ResultadoMonitoramento:
 
 def make_sre_node(
     monitorar: Callable[[], dict] | None = None,
-    criar_demanda: Callable[[str], str] | None = None,
+    criar_demanda: Callable[[str, str], str] | None = None,
     registrar_precedente: Callable[..., None] | None = None,
 ) -> Callable[[BoardState], BoardState]:
     """Factory do nó SRE.
 
     `criar_demanda` é o port que realimenta o Intake (ADR-0019): recebe o texto
-    da demanda gerada e retorna o `thread_id` da nova execução. Só pode ser
-    wireado no nível da aplicação (`create_app()`), onde o grafo compilado e o
-    checkpointer existem.
+    da demanda gerada e o `tenant_id` da execução corrente, retornando o
+    `thread_id` da nova execução. Só pode ser wireado no nível da aplicação
+    (`create_app()`), onde o grafo compilado e o checkpointer existem.
 
     `registrar_precedente` (decisão 2) registra o embedding/metadados da demanda
     na tabela de precedentes quando ela atinge status terminal (`monitorado`),
@@ -68,7 +68,8 @@ def make_sre_node(
 
         if resultado["task_gerada"] and criar_demanda is not None:
             descricao = resultado["descricao_task"] or ""
-            criar_demanda(descricao)
+            tenant_id = state.get("tenant_id", "default")
+            criar_demanda(descricao, tenant_id)
 
         if registrar_precedente is not None:
             thread_id = state.get("thread_id")

@@ -7,13 +7,13 @@
 
 ## Fase A — Camada 1 (harness, testável hoje, sem infra)
 
-- [ ] A.1 `state.py`: adicionar `tenant_id: str` ao `BoardState` (D1, ADR-0015).
-- [ ] A.2 `scopes.py`: criar matriz declarativa `ESCOPOS_POR_CLIENT_ID` e `ESCOPOS_POR_RECURSO` (D3).
-- [ ] A.3 `api/agents.py` (router): endpoints `/oao/<agent>/chat/completions` para os 7 agentes, formato OpenAI-compatível (`messages[]`), tradutor para o nó do grafo (D4).
-- [ ] A.4 Dependency `require_scope(scope)` com provider de `client_id`/escopos mockado/injetável (D4).
-- [ ] A.5 Delegação `act` como metadado de contexto, sem alterar tenant efetivo (D5).
-- [ ] A.6 `POST /intake`: propagar `tenant_id` (da claim JWT mockada na Camada 1; do `state` no port `criar_demanda` do SRE) (D2).
-- [ ] A.7 Testes `tests/test_agents_api.py`: escopo negado → 403; tenant mismatch → 404; `act` propagado; endpoint por agente responde (D6).
+- [x] A.1 `state.py`: adicionar `tenant_id: str` ao `BoardState` (D1, ADR-0015).
+- [x] A.2 `scopes.py`: criar matriz declarativa `ESCOPOS_POR_CLIENT_ID` e `ESCOPOS_POR_RECURSO` (D3).
+- [x] A.3 `api/agents.py` (router): endpoints `/oao/<agent>/chat/completions` para os 7 agentes, formato OpenAI-compatível (`messages[]`), tradutor para o nó do grafo (D4).
+- [x] A.4 Dependency `require_scope(scope)` com provider de `client_id`/escopos mockado/injetável (D4).
+- [x] A.5 Delegação `act` como metadado de contexto, sem alterar tenant efetivo (D5).
+- [x] A.6 `POST /intake`: propagar `tenant_id` (da claim JWT mockada na Camada 1; do `state` no port `criar_demanda` do SRE) (D2).
+- [x] A.7 Testes `tests/test_agents_api.py`: escopo negado → 403; tenant mismatch → 404; `act` propagado; endpoint por agente responde (D6).
 
 ## Fase B — Camada 2 (depende de infra: Keycloak, Postgres, gateway)
 

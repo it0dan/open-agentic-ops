@@ -22,6 +22,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from api.agents import HeaderScopeProvider, ScopeProvider
+from api.agents import router as agents_router
 from open_agentic_ops.gates.hitl_gate import make_resume_handler
 from open_agentic_ops.graph import build_graph
 from open_agentic_ops.nodes.intake import (
@@ -31,6 +33,7 @@ from open_agentic_ops.nodes.intake import (
 )
 from open_agentic_ops.observability import sanitize_for_telemetry
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
+from open_agentic_ops.scopes import TENANT_DEFAULT
 from open_agentic_ops.similaridade import buscar_precedentes, registrar_precedente
 from open_agentic_ops.state import (
     BoardState,
@@ -82,6 +85,7 @@ def create_app(
     *,
     revisar: Callable[[dict], dict] | None = None,
     notifier: Callable[[str, dict[str, Any]], None] | None = None,
+    scope_provider: ScopeProvider | None = None,
 ) -> FastAPI:
     """Monta o app FastAPI com o grafo compilado e o checkpointer (board)."""
     app = FastAPI(title="Open Agentic Ops — FDE Console API")
@@ -94,17 +98,23 @@ def create_app(
         allow_headers=["*"],
     )
 
-    def criar_demanda(texto: str) -> str:
+    provider: ScopeProvider = scope_provider or HeaderScopeProvider()
+    app.state.scope_provider = provider
+    app.include_router(agents_router)
+
+    def criar_demanda(texto: str, tenant_id: str) -> str:
         """Port do SRE (ADR-0019): realimenta o Intake com origem='sre'.
 
         Gera um novo thread_id e invoca o grafo compilado com `origem="sre"`,
-        no mesmo caminho usado por `POST /intake`.
+        propagando o `tenant_id` da execução corrente (D2 — chamada interna,
+        sem JWT), no mesmo caminho usado por `POST /intake`.
         """
         thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
         graph.invoke(
             {
                 "thread_id": thread_id,
+                "tenant_id": tenant_id,
                 "origem": "sre",
                 "spec": texto,
             },
@@ -180,6 +190,7 @@ def create_app(
         result = graph.invoke(
             {
                 "thread_id": thread_id,
+                "tenant_id": TENANT_DEFAULT,
                 "origem": body.origem,
                 "origem_subtipo": body.origem_subtipo,
                 "prioridade": body.prioridade,

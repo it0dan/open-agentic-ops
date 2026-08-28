@@ -137,7 +137,7 @@ def build_graph(
     tools: ToolExecutionPort | None = None,
     skill_dir: str | None = None,
     eval_runner: Callable[[str], ResultadoEval] | None = None,
-    criar_demanda: Callable[[str], str] | None = None,
+    criar_demanda: Callable[[str, str], str] | None = None,
     monitorar: Callable[[], dict] | None = None,
     buscar_precedentes: Callable[..., Sequence[object]] | None = None,
     registrar_precedente: Callable[..., None] | None = None,

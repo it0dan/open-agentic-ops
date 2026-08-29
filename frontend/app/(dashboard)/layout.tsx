@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ContentContainer } from "@/components/content-container";
+import { TenantBadge } from "@/components/tenant-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +27,7 @@ export default async function DashboardLayout({
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Console</span>
             <span className="hidden sm:inline">· Operação da squad</span>
+            <TenantBadge tenantId={session.tenant_id} />
           </div>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />

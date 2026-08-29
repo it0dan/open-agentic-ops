@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Activity,
   ClipboardList,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
+import { TenantBadge } from "@/components/tenant-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,6 +73,7 @@ function NavItems() {
 }
 
 function SidebarFooterContent() {
+  const { data: session } = useSession();
   return (
     <div className="flex items-center gap-3 rounded-xl px-2 py-2">
       <Avatar className="size-9">
@@ -83,6 +86,7 @@ function SidebarFooterContent() {
         <p className="truncate text-xs text-muted-foreground">
           Forward Deployed Engineer
         </p>
+        <TenantBadge tenantId={session?.tenant_id} />
       </div>
       <Button variant="ghost" size="icon" aria-label="Sair">
         <LogOut className="size-4" />

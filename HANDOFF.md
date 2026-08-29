@@ -149,7 +149,7 @@ Commitar (conventional commits coesos) e pushar. Depois, **FDE por tenant no con
 - `frontend/proxy.ts` (Next 16, substitui `middleware.ts`) — optimistic check via cookie de sessão; não-autenticados → `/login`.
 - `app/(dashboard)/layout.tsx` — guard server-side via `auth()` + `redirect` (defesa em profundidade).
 - `app/login/page.tsx` — botão `signIn("keycloak")`; removido form mockado e `localStorage fde-auth`.
-- `components/home-redirect.tsx` — verifica sessão real via `useSession` (não `fde-auth`).
+- `app/page.tsx` — redirect da raiz no **servidor** via `auth()` + `redirect()` (substitui o `HomeRedirect` client, que causava hydration mismatch).
 - `components/auth-provider.tsx` + `app/layout.tsx` — `SessionProvider` no root.
 - `lib/api.ts` — injeta `Authorization: Bearer <access_token>` no `request()` (ponto único, cobre todas as funções de fetch).
 
@@ -158,17 +158,24 @@ Commitar (conventional commits coesos) e pushar. Depois, **FDE por tenant no con
 - `npm run lint` → limpo; `npm test` → **18 passed**; `npm run build` → verde (proxy reconhecido como "ƒ Proxy (Middleware)").
 - **E2E com Keycloak:** token via password grant (`oao-console` + `fde-tenant-a`) com claims `tenant_id=tenant-a` e `azp=oao-console` → `GET /tasks` com Bearer → **200**; sem token → **401**. Confirma o fluxo OIDC completo (frontend autentica → envia Bearer → backend isola por tenant).
 
+**Correção de hydration (pós-commit):** o `HomeRedirect` client (que usava `useSession` e fazia `router.replace` no `useEffect`) causava **hydration mismatch** na rota raiz (`/`) — o servidor renderizava `null` mas o client divergia. Corrigido movendo o redirect para o **servidor**: `app/page.tsx` agora é um server component que usa `auth()` + `redirect()` (rota `/` passou de estática para dinâmica). O `components/home-redirect.tsx` foi removido. O aviso "Encountered a script tag while rendering React component" vem do `next-themes` (script de tema) e é benigno (recoverable).
+
 **ADR-0024** — `docs/adr/0024-console-oidc-login.md` (login OIDC no console).
 
 **Change OpenSpec `oao-console-oidc`** — **arquivado** em `openspec/archive/2026-08-29-oao-console-oidc/` (spec sincronizada em `openspec/specs/oao-console-oidc/spec.md`).
 
 ### Estado do git
-Working tree com mudanças não commitadas (aguardando commit):
-- Modificados: `frontend/package.json`, `frontend/package-lock.json` (next-auth), `frontend/app/(dashboard)/layout.tsx`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/login/page.test.tsx`, `frontend/components/home-redirect.tsx`, `frontend/lib/api.ts`, `README.md`, `ARCHITECTURE.md`, `HANDOFF.md` (esta seção).
-- Novos: `frontend/auth.ts`, `frontend/proxy.ts`, `frontend/components/auth-provider.tsx`, `frontend/app/api/auth/[...nextauth]/route.ts`, `frontend/types/next-auth.d.ts`, `frontend/.env.local` (não commitado), `docs/adr/0024-console-oidc-login.md`, `docs/sdd/feature-intakes/oao-console-oidc.md`, `openspec/archive/2026-08-29-oao-console-oidc/`, `openspec/specs/oao-console-oidc/`.
+**Working tree limpo.** 3 commits na branch `main` (2 à frente de `origin/main`):
+- `453982c` feat(console): login OIDC real via Keycloak (ADR-0024)
+- `a0a1c27` docs: ADR-0024, change oao-console-oidc arquivado e docs atualizados
+- `bc1d02a` fix(console): redirect da raiz no servidor via auth() (hydration)
+
+`frontend/.env.local` não é commitado (gitignore).
 
 ### Próxima ação recomendada
-Commits coesos (conventional commits) + push (após confirmação). Depois, o E2E completo do login via browser (interação manual no Keycloak) e o smoke test real do AI Gateway (condicionado ao cadastro de scopes/credenciais no gateway).
+- **Push** dos 3 commits para `origin/main` (após confirmação).
+- **E2E completo do login via browser** (`http://localhost:3000`, usuário `fde-tenant-a` / `fde-password`): confirmar redirect para Keycloak, callback, sessão e dados reais por tenant (sem modo demo).
+- **Smoke test real do AI Gateway** (condicionado ao cadastro de scopes/credenciais no gateway).
 
 ## Trabalho desta sessão (Intake Agent — decisão 1: fallback de ambiguidade)
 
@@ -951,6 +958,29 @@ Commitado em `a86464e` (`feat(api): superficie de integracao externa por agente 
 ### Próxima ação recomendada
 Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/Keycloak + `get_current_tenant` (D7), wire dos ports reais LLM/MCP/A2A (D8), enforcement real de escopos (D9) — e **Fase C (multi-tenancy, ADR-0015)** — isolamento por tenant com 404 anti-enumeração (D10), FDE por tenant (D11). Ambas dependem de infra (Keycloak, Postgres, gateway).
 
+## Trabalho desta sessão (expor o tenant_id no console do FDE)
+
+**Tarefa:** fechar o gap de visibilidade do multi-tenancy no console — o `tenant_id` estava na sessão Auth.js (auth.ts) e tipado, mas não era exibido em lugar nenhum, então o FDE não sabia em qual tenant operava. **Implementado e validado.**
+
+### ✅ Concluído
+
+- **Diagnóstico:** o backend **já isola por tenant corretamente** via JWT (claim `tenant_id` do Keycloak → `get_current_tenant` em `api/main.py`). O gap era de **visibilidade/UX**, não de segurança.
+- **`components/tenant-badge.tsx`** (novo) — badge reutilizável `TenantBadge` (recebe `tenantId` como prop; renderiza `null` se ausente). Funciona em server e client.
+- **Header do dashboard** (`app/(dashboard)/layout.tsx`) — badge ao lado de "Console · Operação da squad", usando `session.tenant_id` (server component já tinha a sessão).
+- **Footer da sidebar** (`components/app-sidebar.tsx`) — badge sob "Forward Deployed Engineer", via `useSession()` do `next-auth/react` (client component).
+- **Teste** `components/tenant-badge.test.tsx` (novo) — exibe o tenant quando presente; não renderiza quando ausente.
+
+### Validação
+`npm run lint` limpo; `npm test` → **20 passed** (19 + 1 novo); `npm run build` verde.
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Novos: `frontend/components/tenant-badge.tsx`, `frontend/components/tenant-badge.test.tsx`.
+- Modificados: `frontend/app/(dashboard)/layout.tsx`, `frontend/components/app-sidebar.tsx`, `HANDOFF.md` (esta seção).
+
+### Próxima ação recomendada
+Commitar (conventional commits coesos). Depois, seguir as pendências do item 8 (substituir fallbacks determinísticos por implementações reais) e item 9 (provisionar infra do checkpointer Postgres/Redis e habilitar os MCPs).
+
 ## Próximos passos
 
 > **Estado:** grafo implementado e versionado. Change `fde-console` com Grupos 1–7 concluídos (37/37), **arquivado** em `openspec/archive/2026-08-22-fde-console/`. Redesign + evolução do console (Tasks, /graph, Colunas, filtros por facet, metadados, mock populado) **concluídos e validados**. Rodada de definição da oferta (Q1–Q30) registrada em ADRs 0015–0019. **Loop goal-based do Feature Agent (ADR-0016) implementado (Camada 1/harness) e arquivado em `openspec/archive/2026-08-23-feature-agent-loop/`.** **Refatoração de nomenclatura concluída: tudo `tasks`/`task` (frontend e backend), página `/intake` removida (criação via modal no Tasks), autoria de spec no detalhe da demanda.** **Item 1 (gates condicionais, ADR-0017) CONCLUÍDO: gates passam a bloquear de fato (HITL rejeitado→END, Eval reprovado→hitl), nó `deploy` stub, `Status` ganhou `rejeitado`, decisão do FDE tipada (`decisao`/`observacao`), fix do modal (ESC/clique-fora).** **Item 2 (SRE real, ADR-0019) CONCLUÍDO: `ResultadoMonitoramento` estruturado + port `criar_demanda` wireado na API, fechando o loop ADR-0010.** **Intake Agent (decisão 1, fallback de ambiguidade): change OpenSpec `intake-fallback-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-fallback-ambiguidade/` (precedência alta→baixa→fallback `alta`, lista `baixa_ambiguidade`, 48 passed).** **Intake Agent (decisão 3, PII financeiro): change OpenSpec `intake-pii-financeiro` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-pii-financeiro/` (CHAVE_PIX UUID + CONTA_BANCARIA, 51 passed).** **Intake Agent (decisão 4, novo motivo de discordância na Audit): change OpenSpec `intake-audit-motivo-ambiguidade` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-audit-motivo-ambiguidade/` (contador 'ambíguo demais para keyword' via `POST /auditoria/ambigua`, 53 passed).** **Intake Agent (decisão 2, similaridade semântica pgvector): change OpenSpec `intake-similaridade-semantica` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-intake-similaridade-semantica/` (Sentence-Transformers local + pgvector, `make_intake_node` com DI, extra `langgraph-checkpoint-postgres@^2.0.25` resolvido, 61 passed).** **Feature Agent (decisão 2 da seção 7, gatilho dinâmico do Architecture): change OpenSpec `feature-architecture-gatilho-dinamico` IMPLEMENTADO e ARQUIVADO em `openspec/archive/2026-08-23-feature-architecture-gatilho-dinamico/` (heurística `_toca_contrato_externo` no `feature_node`, aresta condicional `fan_in → {architecture | review}`, flag `architecture_enabled` removida, 71 passed).** **Change 4 (cobertura de testes do fluxo por origem) CONCLUÍDO: `tests/test_graph.py` com testes de integração para `estrategia` (subtipo `nova_funcionalidade`/`melhoria`) e `sre` (via port `criar_demanda` → nova execução `origem=sre`) até `monitorado`, helper `_levar_ate_monitorado`, 76 passed, ruff limpo, commit `3102eb8`.** **Plano de implementação da superfície de integração externa (endpoints por agente, auth OAuth2/Keycloak, escopos, `act`, tenant) DOCUMENTADO: Feature Intake Brief `docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md` + change OpenSpec `openspec/changes/oao-endpoints-auth-scopes/` (3 fases, D1–D11) + seção '4. Plano de implementação' em `Inicio/definicoes/oao-endpoints-and-scopes.md`; `openspec validate` → valid.** **Fase A (Camada 1) do `oao-endpoints-auth-scopes` IMPLEMENTADA e ARQUIVADA em `openspec/archive/2026-08-28-oao-endpoints-auth-scopes/`: `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), endpoints `/oao/<agent>/chat/completions` para os 7 agentes com `require_scope` em memória, delegação `act`, port `criar_demanda` com tenant; 85 passed, ruff limpo, commit `a86464e`.** Commitado; push para `origin/main` pendente (branch à frente).
@@ -972,7 +1002,7 @@ Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/K
 15. ~~**Implementar a superfície de integração externa (plano `oao-endpoints-auth-scopes`)**~~ — **Fase A (Camada 1) CONCLUÍDA.** Change OpenSpec `oao-endpoints-auth-scopes` implementado (D1–D6) e **arquivado** em `openspec/archive/2026-08-28-oao-endpoints-auth-scopes/`. `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), endpoints `/oao/<agent>/chat/completions` com `require_scope` em memória, delegação `act`, port `criar_demanda` com tenant. **85 passed, ruff limpo.** **Fases B (auth real OAuth2/Keycloak + ports reais) e C (multi-tenancy, ADR-0015) dependem de infra — PRÓXIMO PASSO.**
 16. ~~**Fase B do `oao-endpoints-auth-scopes` (auth real OAuth2/Keycloak + JWT + LLM real)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-auth-real` implementado (D12–D17) e **arquivado** em `openspec/archive/2026-08-29-oao-auth-real/`. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`, healthcheck na porta 9000), `JWTScopeProvider` (validação via JWKS, extração `client_id` + `tenant_id`), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT. **96 passed, ruff limpo.** Smoke test E2E real com Keycloak validado (200/403/401). **Fase C (multi-tenancy, ADR-0015) CONCLUÍDA — ver item 7.** Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
 17. ~~**Fase C do `oao-endpoints-auth-scopes` (multi-tenancy no console do FDE)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado (D18–D21) e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE (BoardView filtrado, 404 anti-enumeração, intake com tenant do JWT, auth real Bearer JWT nos endpoints de dados). ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — PRÓXIMO PASSO.**
-18. **Login OIDC no console (FDE por tenant)** — **EM ANDAMENTO.** Change OpenSpec `oao-console-oidc` criado e validado (D22–D26). `next-auth@5.0.0-beta.32` instalado. Diagnóstico: o modo demo do frontend é causado pelo 401 (frontend não envia Bearer token; backend Fase C exige JWT). Implementação em andamento: `auth.ts`, API route, `proxy.ts`, guard no layout, login com `signIn("keycloak")`, `lib/api.ts` com Bearer, testes e E2E. ADR-0024 pendente.
+18. ~~**Login OIDC no console (FDE por tenant)**~~ — **CONCLUÍDO.** Change OpenSpec `oao-console-oidc` implementado e **arquivado** em `openspec/archive/2026-08-29-oao-console-oidc/`. Auth.js/next-auth + Keycloak: sessão com `access_token` + `tenant_id`, guard via `proxy.ts` + `auth()`, `lib/api.ts` com Bearer, fim do modo demo. ADR-0024. **Gap de visibilidade do tenant fechado nesta sessão:** `TenantBadge` exibido no header do dashboard e no footer da sidebar (o backend já isolava via JWT).
 
 ## Fontes-chave
 

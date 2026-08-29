@@ -2,6 +2,38 @@
 
 Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md`). Este documento compacta o que foi feito, as decisões fechadas, os artefatos e os próximos passos.
 
+## Trabalho desta sessão (Fases 5 e 6 — E2E no browser + validação de logs sem PII)
+
+**Tarefa:** fechar a validação ponta a ponta do console do FDE — **Fase 5** (E2E no browser via Playwright cobrindo login OIDC, TenantBadge, demandas, HITL, autoria e Audit) e **Fase 6** (captura de logs da API em arquivo e auditoria de que nenhum log contém PII raw). **Implementado e validado.**
+
+### ✅ Concluído
+
+**Fase 5 — E2E no browser (Playwright):**
+- `@playwright/test` instalado no `frontend/` (devDependency) + browser chromium baixado.
+- `frontend/playwright.config.ts` — baseURL `http://localhost:3000`, `reuseExistingServer: true` (reusa API 8000 + console 3000 já em execução), projeto chromium, reporter html.
+- `frontend/e2e/console.spec.ts` — 5 testes cobrindo o fluxo completo do FDE:
+  1. **Login OIDC** via Keycloak (`fde-tenant-a`/`fde-password`) → redirect `/dashboard` + **TenantBadge** `tenant-a`.
+  2. **Demandas reais** por tenant (sem modo demo).
+  3. **HITL** — aprovar demanda em `aguardando_hitl` (verifica que o painel HITL some após aprovar).
+  4. **Autoria de spec** — liberar demanda em `aguardando_autoria` (verifica que o painel de autoria some).
+  5. **Audit** — classificações do Intake por tenant.
+- Script `test:e2e` adicionado ao `frontend/package.json`.
+- **Resultado: 5/5 testes passando** (`npx playwright test`).
+
+**Fase 6 — captura de logs + auditoria PII:**
+- `api/main.py` ganhou `_configurar_logging()` — `FileHandler` persistindo logs em `logs/api.log` (criado automaticamente). O `_notifier_log` já sanitiza o payload via `sanitize_for_telemetry` (ADR-0006).
+- **Fluxo exercitado com PII:** criada demanda via `/intake` com texto contendo CPF (`123.456.789-09`), chave Pix UUID, conta/agência (`1234-5`/`56789-0`) e e-mail (`cliente@exemplo.com`); percorrido o ciclo completo (autoria → `aguardando_hitl` → aprovado → `monitorado`), disparando o `_notifier_log` 2x.
+- **Auditoria do `logs/api.log`:** **nenhum PII raw** encontrado (CPF, chave Pix, conta/agência e e-mail ausentes do log). Confirmação direta: `sanitize_for_telemetry` mascara `[CPF]`, `[CHAVE_PIX]`, `[CONTA]`, `[EMAIL]`.
+- **Nota (over-redaction):** o `thread_id` (UUID) é mascarado como `[CHAVE_PIX]` pelo padrão de chave Pix — efeito colateral aceitável do over-redaction (ADR-0006 prioriza mascarar mais).
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `api/main.py` (load_dotenv + `_configurar_logging`), `frontend/package.json`, `frontend/package-lock.json`, `HANDOFF.md` (esta seção).
+- Novos: `frontend/playwright.config.ts`, `frontend/e2e/console.spec.ts`, `logs/api.log` (runtime, não versionar).
+
+### Próxima ação recomendada
+Commitar (conventional commits coesos) e pushar. Depois, seguir as pendências do item 8 (Eval gate real em duas camadas LangSmith, ADR-0018; métricas reais de SLO no SRE; reasoners LLM nos nós intake/review/architecture/sre) e item 9 (checkpointer Postgres real + habilitar MCPs).
+
 ## Estado atual
 
 **Grafo LangGraph implementado e versionado** (change `squad-open-agentic-ops`, 24/24 tasks, arquivado em `openspec/archive/2026-08-22-squad-open-agentic-ops/`). O repo contém a fundação documental (arquitetura, ADRs, glossário, pipeline SDD/SPDD) e o **código Python funcional** da squad: scaffold Poetry, portas hexagonais, modelo de estado, persistência (checkpointer = board), redação PII, nós e gates, montagem do grafo, observabilidade e testes. **Commitado e pusheado** para `origin/main` (commit `1f2ec8d`).

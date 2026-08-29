@@ -19,13 +19,13 @@ import uuid
 from collections.abc import Callable
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from api.agents import HeaderScopeProvider, ScopeProvider
 from api.agents import router as agents_router
-from open_agentic_ops.auth import JWTScopeProvider
+from open_agentic_ops.auth import JWTScopeProvider, get_current_tenant
 from open_agentic_ops.gates.hitl_gate import make_resume_handler
 from open_agentic_ops.graph import build_graph
 from open_agentic_ops.nodes.intake import (
@@ -37,7 +37,6 @@ from open_agentic_ops.observability import sanitize_for_telemetry
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
 from open_agentic_ops.ports import LLMProviderPort
 from open_agentic_ops.providers.ai_gateway import SensediaAIGatewayProvider
-from open_agentic_ops.scopes import TENANT_DEFAULT
 from open_agentic_ops.similaridade import buscar_precedentes, registrar_precedente
 from open_agentic_ops.state import (
     BoardState,
@@ -164,23 +163,23 @@ def create_app(
         return {"status": "ok"}
 
     @app.get("/tasks")
-    def tasks() -> list[dict]:
+    def tasks(tenant_id: str = Depends(get_current_tenant)) -> list[dict]:
         items = []
-        for thread_id, snap in view.all():
+        for thread_id, snap in view.all(tenant_id=tenant_id):
             items.append(_resumo(thread_id, snap))
         return items
 
     @app.get("/tasks/{thread_id}")
-    def task_detail(thread_id: str) -> dict:
-        snap = view.snapshot(thread_id)
+    def task_detail(thread_id: str, tenant_id: str = Depends(get_current_tenant)) -> dict:
+        snap = view.snapshot(thread_id, tenant_id=tenant_id)
         if snap is None:
             raise HTTPException(status_code=404, detail="demanda não encontrada")
         return _detalhe(thread_id, snap)
 
     @app.post("/resume")
-    def resume_endpoint(body: ResumeBody) -> dict:
+    def resume_endpoint(body: ResumeBody, tenant_id: str = Depends(get_current_tenant)) -> dict:
         config = {"configurable": {"thread_id": body.thread_id}}
-        snap = view.snapshot(body.thread_id)
+        snap = view.snapshot(body.thread_id, tenant_id=tenant_id)
         if snap is None:
             raise HTTPException(status_code=404, detail="demanda não encontrada")
 
@@ -212,13 +211,13 @@ def create_app(
         return _detalhe(body.thread_id, result)
 
     @app.post("/intake")
-    def intake_endpoint(body: IntakeBody) -> dict:
+    def intake_endpoint(body: IntakeBody, tenant_id: str = Depends(get_current_tenant)) -> dict:
         thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
         result = graph.invoke(
             {
                 "thread_id": thread_id,
-                "tenant_id": TENANT_DEFAULT,
+                "tenant_id": tenant_id,
                 "origem": body.origem,
                 "origem_subtipo": body.origem_subtipo,
                 "prioridade": body.prioridade,
@@ -230,9 +229,9 @@ def create_app(
         return {"thread_id": thread_id, **_detalhe(thread_id, result)}
 
     @app.get("/auditoria")
-    def auditoria() -> list[dict]:
+    def auditoria(tenant_id: str = Depends(get_current_tenant)) -> list[dict]:
         items = []
-        for thread_id, snap in view.all():
+        for thread_id, snap in view.all(tenant_id=tenant_id):
             cls = snap.get("classificacao_intake")
             if cls is not None:
                 item = {"thread_id": thread_id, **cls}

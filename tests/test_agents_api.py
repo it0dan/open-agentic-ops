@@ -2,18 +2,21 @@
 
 Cobre: endpoint por agente responde (200), escopo negado → 403, `pii:raw`
 negado a todos, delegação `act` propagada e `tenant_id` propagado ao estado.
-Usa `TestClient` sobre o app com o `HeaderScopeProvider` default (mock).
+Usa `TestClient` sobre o app com o `HeaderScopeProvider` (mock, Camada 1)
+injetado explicitamente — os testes de auth real (JWT) ficam em
+`tests/test_auth.py`.
 """
 
 import pytest
 from fastapi.testclient import TestClient
 
+from api.agents import HeaderScopeProvider
 from api.main import create_app
 
 
 @pytest.fixture
 def client() -> TestClient:
-    with TestClient(create_app()) as c:
+    with TestClient(create_app(scope_provider=HeaderScopeProvider())) as c:
         yield c
 
 

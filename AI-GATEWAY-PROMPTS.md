@@ -273,11 +273,95 @@ Métricas de SLO/error budget (ou pedido de verificação).
 
 ---
 
+## Lista completa de scopes (criar um por um no AI Gateway)
+
+> **Ordem sugerida:** crie cada scope abaixo **uma única vez** no AI Gateway e, em seguida, **associe** os scopes a cada agente conforme a matriz da seção seguinte. Um scope é um recurso transversal compartilhado — não é por agente.
+
+### Scopes de board (checkpointer)
+| Scope | Significado |
+|---|---|
+| `board:read` | Ler o board (checkpointer) |
+| `board:write` | Escrever no board (checkpointer) |
+
+### Scopes de spec
+| Scope | Significado |
+|---|---|
+| `spec:read` | Ler spec |
+| `spec:draft` | Rascunhar spec |
+
+### Scopes de repositório (worktrees)
+| Scope | Significado |
+|---|---|
+| `repo:read` | Ler repositório (worktree) |
+| `repo:write` | Escrever no repositório (worktree) |
+
+### Scopes de plataforma
+| Scope | Significado |
+|---|---|
+| `platform:invoke` | Chamar o Platform Agent |
+| `ci:run` | Rodar pipeline de CI |
+| `lint:run` | Rodar lint |
+| `test:run` | Rodar testes |
+| `deploy:execute` | Deploy em produção (somente pós-Eval) |
+| `artifact:write` | Escrever artefatos |
+
+### Scopes de observabilidade / SLO
+| Scope | Significado |
+|---|---|
+| `obs:read` | Ler observabilidade |
+| `slo:read` | Ler SLOs |
+
+### Scopes de pull request
+| Scope | Significado |
+|---|---|
+| `pr:read` | Ler pull requests |
+| `pr:comment` | Comentar em pull requests |
+| `pr:merge` | Merge de pull requests (**exclusivo do FDE**) |
+
+### Scopes de arquitetura / contratos
+| Scope | Significado |
+|---|---|
+| `contract:read` | Ler contratos externos |
+| `adr:write` | Escrever ADRs |
+| `architecture:consult` | Consultar o Architecture Agent |
+
+### Scopes de PII / precedentes
+| Scope | Significado |
+|---|---|
+| `pii:mask` | Mascarar PII |
+| `pii:raw` | **NEGADO a todos** (nunca criar/conceder) |
+| `precedent:search` | Buscar precedentes |
+
+> **Total: 22 scopes** (excluindo `pii:raw`, que é negado por construção).
+
+---
+
+## Matriz de associação scope → agente
+
+Após criar os scopes, associe-os a cada agente conforme abaixo (espelha `Inicio/definicoes/oao-endpoints-and-scopes.md`):
+
+| Agente | client_id | Scopes associados |
+|---|---|---|
+| **Intake** | `oa-intake` | `board:read`, `board:write`, `spec:draft`, `precedent:search`, `pii:mask` |
+| **Feature Backend** | `oa-feature-backend` | `repo:read`, `repo:write`, `platform:invoke`, `architecture:consult`, `spec:read` |
+| **Feature Frontend** | `oa-feature-frontend` | `repo:read`, `repo:write`, `platform:invoke`, `spec:read` |
+| **Platform** | `oa-platform` | `ci:run`, `lint:run`, `test:run`, `deploy:execute`, `obs:read`, `artifact:write` |
+| **Review** | `oa-review` | `pr:read`, `pr:comment`, `board:read` |
+| **Architecture** | `oa-architecture` | `contract:read`, `adr:write`, `board:read` |
+| **SRE** | `oa-sre` | `obs:read`, `slo:read`, `board:write` |
+
+> **Regras transversais (defesa por construção):**
+> - `pii:raw` **nunca** é concedido a nenhum agente.
+> - `deploy:execute` só é efetivo pós-Eval aprovado (gate de processo, não apenas de scope).
+> - `pr:merge` é **exclusivo do FDE** — nenhum agente recebe esse scope.
+
+---
+
 ## Checklist de configuração no AI Gateway
 
 Para cada um dos 7 agentes, criar no Sensedia AI Gateway:
 
-- [ ] **Scopes** — conforme a matriz em `Inicio/definicoes/oao-endpoints-and-scopes.md` (seção 3).
+- [ ] **Scopes** — criar os 22 scopes da seção "Lista completa de scopes" (uma vez cada) e associá-los ao agente conforme a "Matriz de associação scope → agente".
 - [ ] **Credenciais** — `client_id`/`client_secret` (OAuth2 `client_credentials`).
 - [ ] **Prompt enrichment** — o system prompt da seção correspondente acima.
 - [ ] **Endpoint** — associar o `client_id` ao endpoint `/oao/<agent>/chat/completions`.

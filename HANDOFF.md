@@ -997,13 +997,23 @@ Commitar (conventional commits coesos). Depois, seguir as pendências do item 8 
 ### Validação
 `poetry run pytest` → **111 passed** (103 + 8 novos); `poetry run ruff check .` limpo.
 
+### ✅ Validação real do AI Gateway (LLM real confirmado)
+- **`.env` criado pelo usuário** com credenciais reais dos 7 agentes (client_id/client_secret/chat_endpoint).
+- **Diagnóstico:** as rotas estavam **disponíveis** no gateway, mas o `.env` apontava para URLs com sufixo `-agent` (`/oao/intake-agent/chat/completions`) → **404**. Corrigido para `/oao/<agent>/chat/completions` (sem `-agent`), conforme o contrato.
+- **Smoke test real:** **7/7 agentes respondem 200 OK** (intake, feature-backend, feature-frontend, platform, review, architecture, sre).
+- **Provider real:** `SensediaAIGatewayProvider.provider_para('feature-backend')` retorna resposta do LLM (não o fallback `[implementado]`).
+- **Wire no runtime:** `create_app` carrega os 7 providers em `app.state.llm_por_agente`; `/oao/feature-backend/chat/completions` retorna worktree com `resultado: 'OK'` (LLM real).
+- **Nota de segurança:** o `.env` contém secrets reais — **não commitado** (confirmado no `.gitignore`).
+
 ### Estado do git
-Working tree com mudanças não commitadas (aguardando commit):
-- Novos: `AI-GATEWAY-PROMPTS.md`, `tests/test_llm_wire.py`.
-- Modificados: `src/open_agentic_ops/providers/ai_gateway.py`, `src/open_agentic_ops/graph/__init__.py`, `api/main.py`, `api/agents.py`, `tests/test_ai_gateway_provider.py`, `tests/test_agents_api.py`, `.env.example`, `HANDOFF.md` (esta seção).
+**Commits pushados para `origin/main`:**
+- `6ff5278` — `feat(llm): wirear LLM real por agente no AI Gateway (multi-agente)` (10 arquivos, +672/-19).
+- `eced5da` — `docs(ai-gateway): adicionar lista completa de scopes e matriz de associação por agente` (+85).
+
+Working tree **limpo** (`.env` local não versionado). Branch `main` sincronizada com `origin/main`.
 
 ### Próxima ação recomendada
-Commitar (conventional commits coesos). Depois, **ação externa do usuário:** criar no AI Gateway os **scopes**, **credenciais** e **prompt enrichment** (usando o `AI-GATEWAY-PROMPTS.md`) para cada agente, preencher as env vars por agente e rodar o smoke test real E2E.
+**Item 1 (checkpointer Postgres)** — trocar `build_dev_checkpointer()` por `build_postgres_checkpointer(DATABASE_URL)` (já existe em `persistence/__init__.py`), com fallback para dev; habilitar o MCP `postgres` no `opencode.json`. Menor risco, destrava persistência real do board e habilita o MCP. Depois, **item 2 (Eval gate real, ADR-0018)** — gate não-negociável antes de deploy.
 
 ## Próximos passos
 
@@ -1016,8 +1026,8 @@ Commitar (conventional commits coesos). Depois, **ação externa do usuário:** 
 5. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
 6. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
 7. ~~**Multi-tenancy (ADR-0015)**~~ — **Fase C (backend) CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE: `BoardView` filtrado por `tenant_id`, endpoints (`/tasks`, `/tasks/{thread_id}`, `/resume`, `/intake`, `/auditoria`) com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados. ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — EM ANDAMENTO (change `oao-console-oidc`).**
-8. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT) **PARCIALMENTE CONCLUÍDO nesta sessão**: provider multi-agente + wire no grafo e nos endpoints `/oao/*` + `AI-GATEWAY-PROMPTS.md` (aguarda credenciais/scopes/prompts no gateway para smoke test real). **Pendente:** Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE, reasoners LLM nos nós intake/review/architecture/sre (hoje determinísticos). **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
-9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
+8. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT) **CONCLUÍDO E VALIDADO nesta sessão**: provider multi-agente + wire no grafo e nos endpoints `/oao/*` + `AI-GATEWAY-PROMPTS.md` + smoke test real (7/7 agentes 200 OK, LLM real confirmado). **Pendente:** Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE, reasoners LLM nos nós intake/review/architecture/sre (hoje determinísticos). **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
+9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`. **Estado:** Postgres + Keycloak provisionados e **healthy** (docker-compose); MCPs `postgres`/`redis` ainda `enabled: false` no `opencode.json`; checkpointer ainda `InMemorySaver` (board volátil). **Próximo passo recomendado (item 1):** trocar por `build_postgres_checkpointer(DATABASE_URL)` e habilitar o MCP `postgres`.
 10. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
 11. ~~**Feature Agent — decisão 2 da seção 7 (Architecture Agent como subagent no loop do Feature)**~~ — **CONCLUÍDO (Camada 1).** Change OpenSpec `feature-architecture-gatilho-dinamico` implementado e arquivado em `openspec/archive/2026-08-23-feature-architecture-gatilho-dinamico/`. Acionamento condicional do Architecture por demanda via heurística determinística `_toca_contrato_externo(spec)` no `feature_node` + aresta condicional `fan_in → {architecture | review}`; flag global `architecture_enabled` removida. **71 passed, ruff limpo.** *Nota: a chamada tipo subagent com contexto isolado (desenho completo da decisão 7.3) fica para Camada 2; nesta rodada o Architecture continua como nó do grafo, só com acionamento condicional.*
 12. ~~**Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 2: wirear notifier do HITL.**~~ — **CONCLUÍDO.** Change OpenSpec `hitl-notifier-wire` implementado e arquivado em `openspec/archive/2026-08-23-hitl-notifier-wire/`. `create_app` wirea um `notifier` concreto (log estruturado via `_notifier_log`, sanitizado com `sanitize_for_telemetry`) no `make_resume_handler`; `NotificationPort.notify` passa a ser chamado no `POST /resume`. **73 passed, ruff limpo.** Polling ~4s continua como fonte de verdade; Redis/SSE real fica para Camada 2.

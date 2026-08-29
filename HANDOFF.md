@@ -77,6 +77,52 @@ Working tree com mudanças não commitadas (aguardando commit):
 ### Próxima ação recomendada
 Commitar (conventional commits coesos) e pushar. Depois, **Fase C (multi-tenancy, ADR-0015)** — isolamento por tenant em todo endpoint (404 anti-enumeração), `BoardView` filtrado, FDE por tenant. O smoke test real do AI Gateway fica condicionado ao cadastro de scopes/credenciais no gateway (feito pelo usuário).
 
+## Trabalho desta sessão (Fase C — multi-tenancy no console do FDE)
+
+**Tarefa:** implementar a **Fase C (backend)** do plano `oao-endpoints-auth-scopes` — isolamento por tenant no console do FDE (D10) e auth real no console. Seguiu o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado, validado e arquivado.**
+
+### ✅ Concluído
+
+**Feature Intake Brief** — `docs/sdd/feature-intakes/oao-multi-tenancy.md` (template do projeto).
+
+**Change OpenSpec `oao-multi-tenancy`** — criado via CLI `openspec`, **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`:
+- `proposal.md` — por que isolar por tenant (produto vendável, ADR-0015).
+- `design.md` — decisões D18–D21 (BoardView filtrado, isolamento 404 anti-enumeração, auth real no console, intake com tenant do JWT).
+- `specs/oao-multi-tenancy/spec.md` — 3 requirements (ADDED), sincronizada em `openspec/specs/oao-multi-tenancy/spec.md`.
+- `tasks.md` — 5 grupos, 16 tasks (todas completas).
+
+**`BoardView` com filtro por `tenant_id`** (`src/open_agentic_ops/persistence/__init__.py`):
+- `all(tenant_id=None)` — filtra snapshots cujo `tenant_id` coincide; `None` mantém o comportamento global (uso interno).
+- `snapshot(thread_id, tenant_id=None)` — retorna `None` se o thread não pertencer ao tenant (endpoint responde 404).
+- `pending(tenant_id=None)` — delega o filtro a `all`.
+
+**Isolamento por tenant nos endpoints do console** (`api/main.py`):
+- `GET /tasks`, `GET /tasks/{thread_id}`, `POST /resume`, `POST /intake`, `GET /auditoria` — filtram/validam contra o tenant do JWT; mismatch → **404** (anti-enumeração, ADR-0015).
+- `POST /intake` usa o tenant do JWT (não `TENANT_DEFAULT`).
+
+**Auth real no console** (`src/open_agentic_ops/auth.py`):
+- `JWTScopeProvider.tenant_id_autenticado(request)` — exige token válido (401 se ausente/inválido).
+- `get_current_tenant` — dependency FastAPI que exige Bearer token JWT nos endpoints de dados do console; `HeaderScopeProvider` permanece como provider de dev/teste (injetável via `create_app(scope_provider=...)`).
+
+**Infra (Keycloak):** `infra/keycloak/realm-export.json` — novo client público `oao-console` (OIDC, redirect `http://localhost:3000/*`, protocol mapper `tenant_id`).
+
+**Testes:**
+- `tests/test_multi_tenancy.py` — 6 testes (tasks filtrada por tenant, detalhe de outro tenant → 404, resume de outro tenant → 404, intake no tenant do JWT, auditoria filtrada por tenant).
+- `tests/test_auth.py` — 2 novos testes (console sem token → 401, console com JWT válido → 200).
+- `tests/test_api.py` e `tests/test_review_discordancia.py` — injetam `HeaderScopeProvider` no fixture (provider mockado).
+
+**ADR-0023** — `docs/adr/0023-multi-tenancy-console-isolation.md` (isolamento por tenant no console + auth real).
+
+**Validação:** `poetry run pytest` → **103 passed**; `poetry run ruff check .` → limpo.
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `api/main.py`, `src/open_agentic_ops/auth.py`, `src/open_agentic_ops/persistence/__init__.py`, `infra/keycloak/realm-export.json`, `tests/test_api.py`, `tests/test_auth.py`, `tests/test_review_discordancia.py`, `README.md`, `ARCHITECTURE.md`, `HANDOFF.md` (esta seção).
+- Novos: `tests/test_multi_tenancy.py`, `docs/sdd/feature-intakes/oao-multi-tenancy.md`, `docs/adr/0023-multi-tenancy-console-isolation.md`, `openspec/archive/2026-08-29-oao-multi-tenancy/`, `openspec/specs/oao-multi-tenancy/`.
+
+### Próxima ação recomendada
+Commitar (conventional commits coesos) e pushar. Depois, **FDE por tenant no console (login OIDC no frontend)** — o console passa a exigir Bearer token JWT nos endpoints de dados, mas o frontend ainda não envia token (transição documentada); o login OIDC fica para a próxima rodada. Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
+
 ## Trabalho desta sessão (Intake Agent — decisão 1: fallback de ambiguidade)
 
 **Tarefa:** maturar o próximo agente/sessão do documento de definições (`Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md`) — o **Intake Agent** (seção 6). A seção 6 já tinha 4 decisões fechadas; esta sessão focou na **decisão 1 (inverter o fallback de ambiguidade)**, seguindo o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado e arquivado.**
@@ -868,7 +914,7 @@ Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/K
 4. ~~**Intake Agent — decisão 2 (similaridade semântica pgvector)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-similaridade-semantica` implementado e arquivado em `openspec/archive/2026-08-23-intake-similaridade-semantica/`. Substitui a keyword literal "sem precedente" por busca por similaridade semântica (Sentence-Transformers local + pgvector). `make_intake_node(buscar_precedentes=...)` com DI, `registrar_precedente` no nó SRE, `thread_id` na justificativa, degradação graciosa. Extra `langgraph-checkpoint-postgres@^2.0.25` resolvido. **61 passed, ruff limpo; frontend 19 passed.**
 5. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
 6. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
-7. **Multi-tenancy (ADR-0015)** — frente paralela; ADR já criado, implementação (Keycloak + isolamento + console) depende de infra. **PRÓXIMO PASSO.**
+7. ~~**Multi-tenancy (ADR-0015)**~~ — **Fase C (backend) CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE: `BoardView` filtrado por `tenant_id`, endpoints (`/tasks`, `/tasks/{thread_id}`, `/resume`, `/intake`, `/auditoria`) com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados. ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — PRÓXIMO PASSO.**
 8. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
 9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
 10. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
@@ -877,7 +923,8 @@ Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/K
 13. ~~**Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 3: topologia real do Graph no console.**~~ — **CONCLUÍDO.** Change OpenSpec `graph-topologia-real` implementado e arquivado em `openspec/archive/2026-08-23-graph-topologia-real/`. `loop-stages.ts` divide `feature` em `feature_backend`/`feature_frontend`; `loop-canvas.tsx` representa fan-out/fan-in dos worktrees e a aresta de fechamento SRE→Intake (ADR-0010). Fecha a decisão pendente registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`. **lint/build/test verdes (19/19).**
 14. ~~**Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 4: cobertura de testes do fluxo por origem.**~~ — **CONCLUÍDO.** Novos testes em `tests/test_graph.py` para `estrategia` (com subtipo `nova_funcionalidade`/`melhoria`) e `sre` (via port `criar_demanda` → nova execução `origem=sre`) percorrendo o ciclo completo até `monitorado`. Helper `_levar_ate_monitorado` generaliza o driver para os dois caminhos de ambiguidade. **76 passed, ruff limpo.** Commit `3102eb8`.
 15. ~~**Implementar a superfície de integração externa (plano `oao-endpoints-auth-scopes`)**~~ — **Fase A (Camada 1) CONCLUÍDA.** Change OpenSpec `oao-endpoints-auth-scopes` implementado (D1–D6) e **arquivado** em `openspec/archive/2026-08-28-oao-endpoints-auth-scopes/`. `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), endpoints `/oao/<agent>/chat/completions` com `require_scope` em memória, delegação `act`, port `criar_demanda` com tenant. **85 passed, ruff limpo.** **Fases B (auth real OAuth2/Keycloak + ports reais) e C (multi-tenancy, ADR-0015) dependem de infra — PRÓXIMO PASSO.**
-16. ~~**Fase B do `oao-endpoints-auth-scopes` (auth real OAuth2/Keycloak + JWT + LLM real)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-auth-real` implementado (D12–D17) e **arquivado** em `openspec/archive/2026-08-29-oao-auth-real/`. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`, healthcheck na porta 9000), `JWTScopeProvider` (validação via JWKS, extração `client_id` + `tenant_id`), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT. **96 passed, ruff limpo.** Smoke test E2E real com Keycloak validado (200/403/401). **Fase C (multi-tenancy, ADR-0015) — PRÓXIMO PASSO.** Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
+16. ~~**Fase B do `oao-endpoints-auth-scopes` (auth real OAuth2/Keycloak + JWT + LLM real)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-auth-real` implementado (D12–D17) e **arquivado** em `openspec/archive/2026-08-29-oao-auth-real/`. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`, healthcheck na porta 9000), `JWTScopeProvider` (validação via JWKS, extração `client_id` + `tenant_id`), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT. **96 passed, ruff limpo.** Smoke test E2E real com Keycloak validado (200/403/401). **Fase C (multi-tenancy, ADR-0015) CONCLUÍDA — ver item 7.** Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
+17. ~~**Fase C do `oao-endpoints-auth-scopes` (multi-tenancy no console do FDE)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado (D18–D21) e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE (BoardView filtrado, 404 anti-enumeração, intake com tenant do JWT, auth real Bearer JWT nos endpoints de dados). ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — PRÓXIMO PASSO.**
 
 ## Fontes-chave
 

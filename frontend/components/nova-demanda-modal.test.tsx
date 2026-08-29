@@ -51,7 +51,7 @@ describe("NovaDemandaModal", () => {
     fireEvent.click(screen.getByText("Nova funcionalidade"));
     fireEvent.click(screen.getByText("Alta"));
 
-    fireEvent.click(screen.getByRole("button", { name: /Enviar para o Intake/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Criar demanda/i }));
 
     await waitFor(() => {
       expect(injetarDemanda).toHaveBeenCalledWith({
@@ -72,7 +72,7 @@ describe("NovaDemandaModal", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: /Enviar para o Intake/i }),
+      screen.getByRole("button", { name: /Criar demanda/i }),
     ).toBeDisabled();
   });
 

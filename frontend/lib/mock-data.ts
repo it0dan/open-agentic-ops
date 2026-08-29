@@ -55,6 +55,16 @@ export interface DecisaoHitl {
   observacao: string | null;
 }
 
+export interface RaciocinioEtapa {
+  etapa: string;
+  agente: string;
+  raciocinio: string;
+  evidencias: Record<string, unknown>[];
+  status: "pendente" | "aprovado" | "rejeitado" | "aprovado_com_ressalvas";
+  decisao_fde?: DecisaoHitl | null;
+  timestamp: string;
+}
+
 export interface ResultadoEval {
   aprovado: boolean;
   detalhes: string | null;
@@ -91,11 +101,13 @@ export interface Demanda {
   feedback_review: FeedbackReview[];
   origem_discordancia?: OrigemDiscordancia;
   decisao_hitl?: DecisaoHitl;
+  raciocinios?: RaciocinioEtapa[];
   resultado_eval?: ResultadoEval;
   classificacao_intake?: ClassificacaoIntake;
   pii_masked?: boolean;
   progresso?: number;
   agente_atual?: string;
+  aguardando_etapa?: string;
   erros?: number;
   eventos?: EventoLoop[];
   atualizado_em?: string;
@@ -110,6 +122,7 @@ export const demandasMock: Demanda[] = [
     spec_autor: "fde",
     dominio: "backend",
     status: "aguardando_hitl",
+    aguardando_etapa: "review",
     spec:
       "Nova Instrução Normativa do BCB altera o Manual de Escopo de Dados e Serviços do Open Finance, introduzindo um campo ligado à portabilidade de crédito consignado.",
     worktrees: [

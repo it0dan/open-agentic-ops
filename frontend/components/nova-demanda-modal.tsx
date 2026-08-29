@@ -83,27 +83,28 @@ export function NovaDemandaModal({
     e.preventDefault();
     if (!texto.trim() || !titulo.trim()) return;
     setEnviando(true);
+    const payload = {
+      origem,
+      origem_subtipo: subtipo,
+      prioridade,
+      titulo: titulo.trim(),
+      texto,
+    };
+    setTexto("");
+    setTitulo("");
+    setOrigem("regulatorio");
+    setSubtipo(ORIGEM_SUBTIPOS["regulatorio"][0]);
+    setPrioridade("media");
+    onCriada?.();
+    onClose();
     try {
-      await injetarDemanda({
-        origem,
-        origem_subtipo: subtipo,
-        prioridade,
-        titulo: titulo.trim(),
-        texto,
-      });
-      setTexto("");
-      setTitulo("");
-      setOrigem("regulatorio");
-      setSubtipo(ORIGEM_SUBTIPOS["regulatorio"][0]);
-      setPrioridade("media");
-      toast.success("Demanda injetada", {
+      await injetarDemanda(payload);
+      toast.success("Demanda criada", {
         description: "O Intake processou a nova demanda na squad.",
       });
-      onCriada?.();
-      onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao injetar demanda.";
-      toast.error("Falha ao injetar demanda", { description: msg });
+      const msg = err instanceof Error ? err.message : "Erro ao criar demanda.";
+      toast.error("Falha ao criar demanda", { description: msg });
     } finally {
       setEnviando(false);
     }
@@ -233,8 +234,8 @@ export function NovaDemandaModal({
           <div className="flex w-full items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
               {texto.trim() && titulo.trim()
-                ? "Pronto para enviar"
-                : "Preencha título e descrição para habilitar o envio"}
+                ? "Pronto para criar"
+                : "Preencha título e descrição para habilitar a criação"}
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -252,7 +253,7 @@ export function NovaDemandaModal({
                 className="h-11 rounded-xl bg-primary px-6 text-primary-foreground font-semibold shadow-sm transition-all hover:bg-primary/90"
               >
                 <Send className="mr-2 size-4" />
-                {enviando ? "Enviando…" : "Enviar para o Intake"}
+                {enviando ? "Criando…" : "Criar demanda"}
               </Button>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { notFound, useParams } from "next/navigation";
 import {
   Activity,
   ArrowLeft,
+  Brain,
   Check,
   FilePenLine,
   FileText,
@@ -136,7 +137,11 @@ export default function DetalhePage() {
     notFound();
   }
 
-  const aguardando = demanda.status === "aguardando_hitl";
+  const aguardando = Boolean(demanda.aguardando_etapa);
+  const etapaPendente = demanda.aguardando_etapa;
+  const raciocinioPendente = (demanda.raciocinios ?? []).find(
+    (r) => r.etapa === etapaPendente,
+  );
   const etapaAtual = Math.max(0, FLUXO.indexOf(demanda.status));
   const progresso = Math.round((etapaAtual / (FLUXO.length - 1)) * 100);
 
@@ -307,12 +312,24 @@ export default function DetalhePage() {
               Decisão do FDE (HITL)
             </CardTitle>
             <CardDescription>
-              Revise o resultado da implementação (worktrees, ADRs, feedbacks)
-              antes do merge. Aprovar libera para eval/deploy; rejeitar devolve
-              para revisão.
+              Revise o raciocínio do agente da etapa{" "}
+              <span className="font-mono uppercase">{etapaPendente}</span> antes
+              de prosseguir. Aprovar libera a próxima etapa; rejeitar encerra a
+              demanda.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
+            {raciocinioPendente && (
+              <div className="rounded-xl border border-orange-500/20 bg-background/40 p-4">
+                <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  {raciocinioPendente.agente} ·{" "}
+                  {new Date(raciocinioPendente.timestamp).toLocaleString("pt-BR")}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+                  {raciocinioPendente.raciocinio}
+                </p>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               <Button
                 onClick={() => decidir("aprovado")}
@@ -374,6 +391,9 @@ export default function DetalhePage() {
           </TabsTrigger>
           <TabsTrigger value="feedbacks" className="gap-2 rounded-xl">
             <MessageSquare className="size-4" /> Feedbacks
+          </TabsTrigger>
+          <TabsTrigger value="raciocinios" className="gap-2 rounded-xl">
+            <Brain className="size-4" /> Raciocínio
           </TabsTrigger>
           <TabsTrigger value="decisoes" className="gap-2 rounded-xl">
             <ShieldCheck className="size-4" /> HITL & Eval
@@ -511,6 +531,50 @@ export default function DetalhePage() {
                     )}
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="raciocinios" className="mt-4">
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle>Raciocínio dos agentes</CardTitle>
+              <CardDescription>
+                Reasoning estruturado de cada etapa, registrado para auditoria
+                do FDE (ADR-0025).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(demanda.raciocinios ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum raciocínio registrado.
+                </p>
+              ) : (
+                [...(demanda.raciocinios ?? [])]
+                  .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+                  .map((r, i) => (
+                    <div
+                      key={i}
+                      className="rounded-xl border border-border/60 bg-muted/30 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {r.agente} ·{" "}
+                          <span className="uppercase">{r.etapa}</span>
+                        </p>
+                        <Badge variant="secondary" className="capitalize">
+                          {r.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+                        {r.raciocinio}
+                      </p>
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        {new Date(r.timestamp).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                  ))
               )}
             </CardContent>
           </Card>

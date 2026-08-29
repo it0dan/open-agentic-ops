@@ -28,17 +28,22 @@ test.describe("Console do FDE — E2E", () => {
     await expect(page.getByText("Dashboard de saldo")).toBeVisible();
   });
 
-  test("HITL — aprovar demanda em aguardando_hitl", async ({ page }) => {
+  test("HITL — aprovar demanda em aguardando_hitl avança para a próxima etapa", async ({
+    page,
+  }) => {
     await login(page);
     await page.goto("/tasks");
     const card = page.getByText("E2E baixa ambiguidade").first();
     await expect(card).toBeVisible();
     await card.click();
     await expect(page.getByText("Decisão do FDE (HITL)")).toBeVisible();
+    await expect(page.getByText(/etapa/i).first()).toBeVisible();
     await page
       .getByRole("button", { name: "Aprovar", exact: true })
       .click();
-    await expect(page.getByText("Decisão do FDE (HITL)")).toHaveCount(0);
+    // Com o HITL por etapa (ADR-0025), aprovar um gate avança para o próximo;
+    // o painel permanece visível enquanto houver etapa pendente.
+    await expect(page.getByText("Decisão do FDE (HITL)")).toBeVisible();
   });
 
   test("autoria de spec — liberar demanda em aguardando_autoria", async ({

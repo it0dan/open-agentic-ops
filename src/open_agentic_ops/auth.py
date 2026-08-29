@@ -98,13 +98,26 @@ class JWTScopeProvider:
         claims = self._decode(token)
         return self._extrair_tenant_id(claims)
 
+    def tenant_id_autenticado(self, request: Request) -> str:
+        """Tenant do JWT, exigindo token válido (401 se ausente/inválido).
+
+        Usada pela dependency `get_current_tenant` nos endpoints que tocam o
+        board (isolamento por tenant, ADR-0015).
+        """
+        token = self._token_da_request(request)
+        if not token:
+            raise HTTPException(status_code=401, detail="token ausente")
+        claims = self._decode(token)
+        return self._extrair_tenant_id(claims)
+
 
 def get_current_tenant(request: Request) -> str:
     """Dependency FastAPI: retorna o `tenant_id` do JWT (ADR-0015).
 
-    Usada nos endpoints que tocam o board (Fase C). Nesta Fase B, o tenant já
-    é extraído no `JWTScopeProvider`; esta dependency formaliza o acesso para
-    a Fase C (isolamento por tenant).
+    Exige um Bearer token JWT válido — sem token ou token inválido → 401.
+    Usada nos endpoints que tocam o board (isolamento por tenant).
     """
     provider = request.app.state.scope_provider
+    if isinstance(provider, JWTScopeProvider):
+        return provider.tenant_id_autenticado(request)
     return provider.tenant_id(request)

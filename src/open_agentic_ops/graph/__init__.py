@@ -13,8 +13,9 @@ from collections.abc import Callable, Sequence
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from open_agentic_ops.autonomia import autonomia_da_etapa
 from open_agentic_ops.gates.eval_gate import make_eval_gate
-from open_agentic_ops.gates.hitl_gate import hitl_gate
+from open_agentic_ops.gates.hitl_gate import make_hitl_gate
 from open_agentic_ops.nodes.architecture_node import make_architecture_node
 from open_agentic_ops.nodes.feature_node import make_feature_node
 from open_agentic_ops.nodes.intake_node import make_intake_node, route_by_ambiguity
@@ -71,26 +72,28 @@ def _fan_in(state: BoardState) -> BoardState:
     return {"status": "em_revisao"}
 
 
-def _marcar_hitl(state: BoardState) -> BoardState:
-    """Marca a demanda como aguardando HITL antes do gate (ADR-0005).
-
-    O `hitl_gate` pausa via `interrupt()`; o status precisa refletir a espera
-    durante a pausa, então é setado aqui (nó anterior), no mesmo padrão de
-    `_escala_fde` → `_autoria_spec`.
-    """
-    return {"status": "aguardando_hitl"}
-
-
 def route_by_hitl_decision(state: BoardState) -> str:
     """Aresta condicional do HITL (ADR-0017).
 
     `rejeitado` é status terminal — o grafo termina. Qualquer outra decisão
-    (aprovado, aprovado com ressalvas) segue ao Eval.
+    (aprovado, aprovado com ressalvas) segue ao próximo nó.
     """
     decisao = (state.get("decisao_hitl") or {}).get("decisao")
     if decisao == "rejeitado":
         return "rejeitado"
     return "aprovado"
+
+
+def route_by_hitl_feature(state: BoardState) -> list[str]:
+    """Aresta condicional do gate de Feature (ADR-0025).
+
+    Aprovado dispara o fan-out dos worktrees backend/frontend em paralelo;
+    rejeitado termina o grafo.
+    """
+    decisao = (state.get("decisao_hitl") or {}).get("decisao")
+    if decisao == "rejeitado":
+        return ["rejeitado"]
+    return ["feature_backend", "feature_frontend"]
 
 
 def route_by_eval_result(state: BoardState) -> str:
@@ -172,61 +175,106 @@ def build_graph(
     deploy = make_deploy_node(tools=tools)
     intake = make_intake_node(buscar_precedentes=buscar_precedentes)
 
+    hitl_intake = make_hitl_gate("intake", autonomia_da_etapa("intake"))
+    hitl_feature = make_hitl_gate("feature", autonomia_da_etapa("feature"))
+    hitl_platform = make_hitl_gate("platform", autonomia_da_etapa("platform"))
+    hitl_review = make_hitl_gate("review", autonomia_da_etapa("review"))
+    hitl_architecture = make_hitl_gate("architecture", autonomia_da_etapa("architecture"))
+    hitl_deploy = make_hitl_gate("deploy", autonomia_da_etapa("deploy"))
+    hitl_sre = make_hitl_gate("sre", autonomia_da_etapa("sre"))
+
     builder = StateGraph(BoardState)
 
     builder.add_node("intake", intake)
+    builder.add_node("hitl_intake", hitl_intake)
     builder.add_node("rascunha_spec", _rascunha_spec)
     builder.add_node("escala_fde", _escala_fde)
     builder.add_node("autoria_spec", _autoria_spec)
     builder.add_node("fan_out", _fan_out)
+    builder.add_node("hitl_feature", hitl_feature)
     builder.add_node("feature_backend", feature_backend)
     builder.add_node("feature_frontend", feature_frontend)
     builder.add_node("platform", platform)
+    builder.add_node("hitl_platform", hitl_platform)
     builder.add_node("architecture", architecture)
+    builder.add_node("hitl_architecture", hitl_architecture)
     builder.add_node("fan_in", _fan_in)
+    builder.add_node("hitl_review", hitl_review)
     builder.add_node("review", review)
-    builder.add_node("marcar_hitl", _marcar_hitl)
-    builder.add_node("hitl", hitl_gate)
+    builder.add_node("hitl_deploy", hitl_deploy)
     builder.add_node("eval", eval_gate)
     builder.add_node("deploy", deploy)
+    builder.add_node("hitl_sre", hitl_sre)
     builder.add_node("sre", sre)
 
     builder.add_edge(START, "intake")
+    builder.add_edge("intake", "hitl_intake")
     builder.add_conditional_edges(
-        "intake",
-        route_by_ambiguity,
-        {"rascunha_spec": "rascunha_spec", "fde": "escala_fde"},
+        "hitl_intake",
+        route_by_hitl_decision,
+        {"aprovado": "rascunha_spec", "rejeitado": END},
     )
-    builder.add_edge("rascunha_spec", "fan_out")
+    builder.add_conditional_edges(
+        "rascunha_spec",
+        route_by_ambiguity,
+        {"rascunha_spec": "fan_out", "fde": "escala_fde"},
+    )
     builder.add_edge("escala_fde", "autoria_spec")
     builder.add_edge("autoria_spec", "fan_out")
 
-    builder.add_edge("fan_out", "feature_backend")
-    builder.add_edge("fan_out", "feature_frontend")
+    builder.add_edge("fan_out", "hitl_feature")
+    builder.add_conditional_edges(
+        "hitl_feature",
+        route_by_hitl_feature,
+        {
+            "feature_backend": "feature_backend",
+            "feature_frontend": "feature_frontend",
+            "rejeitado": END,
+        },
+    )
     builder.add_edge("feature_backend", "platform")
     builder.add_edge("feature_frontend", "platform")
-    builder.add_edge("platform", "fan_in")
+    builder.add_edge("platform", "hitl_platform")
+    builder.add_conditional_edges(
+        "hitl_platform",
+        route_by_hitl_decision,
+        {"aprovado": "fan_in", "rejeitado": END},
+    )
 
     builder.add_conditional_edges(
         "fan_in",
         route_by_architecture,
-        {"architecture": "architecture", "review": "review"},
+        {"architecture": "hitl_architecture", "review": "hitl_review"},
     )
-    builder.add_edge("architecture", "review")
-
-    builder.add_edge("review", "marcar_hitl")
-    builder.add_edge("marcar_hitl", "hitl")
     builder.add_conditional_edges(
-        "hitl",
+        "hitl_architecture",
+        route_by_hitl_decision,
+        {"aprovado": "architecture", "rejeitado": END},
+    )
+    builder.add_edge("architecture", "hitl_review")
+    builder.add_conditional_edges(
+        "hitl_review",
+        route_by_hitl_decision,
+        {"aprovado": "review", "rejeitado": END},
+    )
+
+    builder.add_edge("review", "hitl_deploy")
+    builder.add_conditional_edges(
+        "hitl_deploy",
         route_by_hitl_decision,
         {"aprovado": "eval", "rejeitado": END},
     )
     builder.add_conditional_edges(
         "eval",
         route_by_eval_result,
-        {"aprovado": "deploy", "reprovado": "hitl"},
+        {"aprovado": "deploy", "reprovado": "hitl_deploy"},
     )
-    builder.add_edge("deploy", "sre")
+    builder.add_edge("deploy", "hitl_sre")
+    builder.add_conditional_edges(
+        "hitl_sre",
+        route_by_hitl_decision,
+        {"aprovado": "sre", "rejeitado": END},
+    )
     builder.add_edge("sre", END)
 
     return builder

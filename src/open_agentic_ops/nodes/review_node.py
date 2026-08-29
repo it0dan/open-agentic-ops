@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from open_agentic_ops.pii import detectar_pii
-from open_agentic_ops.state import BoardState, FeedbackReview
+from open_agentic_ops.state import BoardState, FeedbackReview, novo_raciocinio
 
 
 def _revisar(contexto: dict) -> dict:
@@ -83,6 +83,17 @@ def make_review_node(
         retorno: BoardState = {
             "feedback_review": feedbacks,
             "status": "em_revisao",
+            "raciocinios": [
+                novo_raciocinio(
+                    etapa="review",
+                    agente="Review Agent",
+                    raciocinio=(
+                        "Revisou os PRs contra os padrões do time"
+                        + (" e discordou da classificação do Intake." if discordou else ".")
+                    ),
+                    evidencias=[{"feedbacks": feedbacks, "discordou": discordou}],
+                )
+            ],
         }
         if discordou:
             retorno["origem_discordancia"] = "review"

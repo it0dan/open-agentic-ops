@@ -8,6 +8,7 @@ acumulativos (`feedback_review`, `adrs`).
 from __future__ import annotations
 
 import operator
+from datetime import UTC, datetime
 from typing import Annotated, Literal, TypedDict
 
 Origem = Literal["cliente", "regulatorio", "estrategia", "sre"]
@@ -74,6 +75,34 @@ class DecisaoHitl(TypedDict):
     observacao: str | None
 
 
+class RaciocinioEtapa(TypedDict):
+    etapa: str
+    agente: str
+    raciocinio: str
+    evidencias: list[dict]
+    status: Literal["pendente", "aprovado", "rejeitado", "aprovado_com_ressalvas"]
+    decisao_fde: DecisaoHitl | None
+    timestamp: str
+
+
+def novo_raciocinio(
+    etapa: str,
+    agente: str,
+    raciocinio: str,
+    evidencias: list[dict] | None = None,
+) -> RaciocinioEtapa:
+    """Cria um `RaciocinioEtapa` com timestamp UTC (ADR-0025)."""
+    return {
+        "etapa": etapa,
+        "agente": agente,
+        "raciocinio": raciocinio,
+        "evidencias": evidencias or [],
+        "status": "pendente",
+        "decisao_fde": None,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+
+
 class ResultadoEval(TypedDict):
     aprovado: bool
     detalhes: str | None
@@ -112,6 +141,7 @@ class BoardState(TypedDict, total=False):
     adrs: Annotated[list[Adr], operator.add]
     pii_masked: bool
     decisao_hitl: DecisaoHitl
+    raciocinios: Annotated[list[RaciocinioEtapa], operator.add]
     resultado_eval: ResultadoEval
     resultado_monitoramento: ResultadoMonitoramento
     classificacao_intake: ClassificacaoIntake

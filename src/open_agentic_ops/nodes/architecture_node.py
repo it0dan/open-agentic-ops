@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from open_agentic_ops.state import Adr, BoardState
+from open_agentic_ops.state import Adr, BoardState, novo_raciocinio
 
 
 def _aconselhar(spec: str) -> str:
@@ -43,6 +43,14 @@ def make_architecture_node(
         return {
             "adrs": adrs,
             "status": "em_implementacao",
+            "raciocinios": [
+                novo_raciocinio(
+                    etapa="architecture",
+                    agente="Architecture Agent",
+                    raciocinio=recomendacao,
+                    evidencias=[{"adr": adr}],
+                )
+            ],
         }
 
     return architecture_node

@@ -221,7 +221,9 @@ def create_app(
     def tasks(tenant_id: str = Depends(get_current_tenant)) -> list[dict]:
         items = []
         for thread_id, snap in view.all(tenant_id=tenant_id):
-            items.append(_resumo(thread_id, snap))
+            config = {"configurable": {"thread_id": thread_id}}
+            proximos = graph.get_state(config).next
+            items.append(_resumo(thread_id, snap, proximos))
         return items
 
     @app.get("/tasks/{thread_id}")
@@ -229,7 +231,9 @@ def create_app(
         snap = view.snapshot(thread_id, tenant_id=tenant_id)
         if snap is None:
             raise HTTPException(status_code=404, detail="demanda não encontrada")
-        return _detalhe(thread_id, snap)
+        config = {"configurable": {"thread_id": thread_id}}
+        proximos = graph.get_state(config).next
+        return _detalhe(thread_id, snap, proximos)
 
     @app.post("/resume")
     def resume_endpoint(body: ResumeBody, tenant_id: str = Depends(get_current_tenant)) -> dict:
@@ -239,7 +243,8 @@ def create_app(
             raise HTTPException(status_code=404, detail="demanda não encontrada")
 
         proximos = graph.get_state(config).next
-        if "hitl" in proximos:
+        aguardando_hitl = any(str(n).startswith("hitl_") for n in proximos)
+        if aguardando_hitl:
             if body.decisao is None:
                 raise HTTPException(
                     status_code=422,
@@ -263,7 +268,8 @@ def create_app(
             )
 
         result = graph.invoke(cmd, config)
-        return _detalhe(body.thread_id, result)
+        proximos = graph.get_state(config).next
+        return _detalhe(body.thread_id, result, proximos)
 
     @app.post("/intake")
     def intake_endpoint(body: IntakeBody, tenant_id: str = Depends(get_current_tenant)) -> dict:
@@ -281,7 +287,7 @@ def create_app(
             },
             config,
         )
-        return {"thread_id": thread_id, **_detalhe(thread_id, result)}
+        return {"thread_id": thread_id, **_detalhe(thread_id, result, graph.get_state(config).next)}
 
     @app.get("/auditoria")
     def auditoria(tenant_id: str = Depends(get_current_tenant)) -> list[dict]:
@@ -370,7 +376,20 @@ def _erros(snap: BoardState) -> int:
     return sum(1 for wt in snap.get("worktrees", []) if wt.get("status") == "falhou")
 
 
-def _resumo(thread_id: str, snap: BoardState) -> dict:
+def _etapa_pendente(proximos: Any) -> str | None:
+    """Deriva a etapa que aguarda decisão do FDE a partir de `state.next`.
+
+    Mapeia o nó `hitl_*` para o nome da etapa (ADR-0025). Retorna `None` quando
+    não há gate de HITL pendente.
+    """
+    for n in proximos or ():
+        nome = str(n)
+        if nome.startswith("hitl_"):
+            return nome.removeprefix("hitl_")
+    return None
+
+
+def _resumo(thread_id: str, snap: BoardState, proximos: Any = None) -> dict:
     cls = snap.get("classificacao_intake") or {}
     status = snap.get("status")
     return {
@@ -388,20 +407,22 @@ def _resumo(thread_id: str, snap: BoardState) -> dict:
         "criado_em": cls.get("timestamp"),
         "progresso": _progresso(status),
         "agente_atual": _agente_atual(status),
+        "aguardando_etapa": _etapa_pendente(proximos),
         "erros": _erros(snap),
     }
 
 
-def _detalhe(thread_id: str, snap: BoardState) -> dict:
+def _detalhe(thread_id: str, snap: BoardState, proximos: Any = None) -> dict:
     return {
         "thread_id": thread_id,
-        **_resumo(thread_id, snap),
+        **_resumo(thread_id, snap, proximos),
         "spec": snap.get("spec"),
         "worktrees": snap.get("worktrees", []),
         "adrs": snap.get("adrs", []),
         "feedback_review": snap.get("feedback_review", []),
         "origem_discordancia": snap.get("origem_discordancia"),
         "decisao_hitl": snap.get("decisao_hitl"),
+        "raciocinios": snap.get("raciocinios", []),
         "resultado_eval": snap.get("resultado_eval"),
         "resultado_monitoramento": snap.get("resultado_monitoramento"),
         "classificacao_intake": snap.get("classificacao_intake"),

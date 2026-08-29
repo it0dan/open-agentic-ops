@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 
 from open_agentic_ops.nodes.intake import classificar_ambiguidade, classificar_dominio
 from open_agentic_ops.pii import sanitizar_payload
-from open_agentic_ops.state import BoardState, Origem
+from open_agentic_ops.state import BoardState, Origem, novo_raciocinio
 
 BuscarPrecedentes = Callable[[str, str, str, int, float], Sequence[object]]
 
@@ -79,6 +79,18 @@ def make_intake_node(
         if precedente_ref:
             justificativa.append(f"precedente:{precedente_ref}")
 
+        raciocinio = novo_raciocinio(
+            etapa="intake",
+            agente="Intake Agent",
+            raciocinio=(
+                f"Classificou domínio={dominio}, ambiguidade={ambiguidade}, "
+                f"spec_autor={spec_autor}."
+            ),
+            evidencias=[
+                {"dominio": dominio, "ambiguidade": ambiguidade, "justificativa": justificativa}
+            ],
+        )
+
         return {
             "origem": origem,
             "origem_subtipo": state.get("origem_subtipo"),
@@ -90,6 +102,7 @@ def make_intake_node(
             "spec_autor": spec_autor,
             "pii_masked": True,
             "status": "triado",
+            "raciocinios": [raciocinio],
             "classificacao_intake": {
                 "dominio": dominio,
                 "ambiguidade": ambiguidade,

@@ -19,7 +19,7 @@ from pathlib import Path
 from open_agentic_ops.nodes.guia import Guia, carregar_guia
 from open_agentic_ops.pii import redigir_texto
 from open_agentic_ops.ports import LLMProviderPort, ToolExecutionPort
-from open_agentic_ops.state import BoardState, Dominio, Worktree
+from open_agentic_ops.state import BoardState, Dominio, Worktree, novo_raciocinio
 
 
 class _DefaultLLM:
@@ -149,6 +149,25 @@ def make_feature_node(
 
         retorno: BoardState = {
             "worktrees": [worktree],
+            "raciocinios": [
+                novo_raciocinio(
+                    etapa=f"feature_{guia.dominio}",
+                    agente=f"Feature Agent ({guia.dominio})",
+                    raciocinio=(
+                        f"Implementou no worktree {branch} com status {status} "
+                        f"após {len(historico)} iteração(ões)."
+                    ),
+                    evidencias=[
+                        {
+                            "branch": branch,
+                            "status": status,
+                            "iteracoes": len(historico),
+                            "resultado": resultado,
+                            "historico": historico,
+                        }
+                    ],
+                )
+            ],
         }
         if guia.dominio in ("backend", "ambos"):
             retorno["toca_contrato_externo"] = _toca_contrato_externo(spec)

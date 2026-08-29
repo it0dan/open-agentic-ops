@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from open_agentic_ops.state import BoardState, ResultadoMonitoramento
+from open_agentic_ops.state import BoardState, ResultadoMonitoramento, novo_raciocinio
 
 
 def _monitorar() -> dict:
@@ -85,6 +85,14 @@ def make_sre_node(
         return {
             "status": "monitorado",
             "resultado_monitoramento": resultado,
+            "raciocinios": [
+                novo_raciocinio(
+                    etapa="sre",
+                    agente="SRE Agent",
+                    raciocinio=resultado["motivo"],
+                    evidencias=[{"resultado_monitoramento": resultado}],
+                )
+            ],
         }
 
     return sre_node

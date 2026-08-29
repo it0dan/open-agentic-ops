@@ -25,6 +25,7 @@ from open_agentic_ops.nodes.intake_node import make_intake_node
 from open_agentic_ops.nodes.platform_node import make_platform_node
 from open_agentic_ops.nodes.review_node import make_review_node
 from open_agentic_ops.nodes.sre_node import make_sre_node
+from open_agentic_ops.ports import LLMProviderPort
 from open_agentic_ops.scopes import TENANT_DEFAULT, tem_escopo
 from open_agentic_ops.state import BoardState, Dominio
 
@@ -66,7 +67,9 @@ def _ultima_mensagem(body: ChatCompletionsBody) -> str:
     return body.messages[-1].content
 
 
-def _invocar_intake(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
+def _invocar_intake(
+    body: ChatCompletionsBody, tenant_id: str, llm: LLMProviderPort | None
+) -> BoardState:
     node = make_intake_node()
     estado: BoardState = {
         "tenant_id": tenant_id,
@@ -76,9 +79,13 @@ def _invocar_intake(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
     return node(estado)
 
 
-def _invocar_feature(dominio: Dominio) -> Callable[[ChatCompletionsBody, str], BoardState]:
-    def _invoke(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
-        node = make_feature_node(dominio)
+def _invocar_feature(
+    dominio: Dominio,
+) -> Callable[[ChatCompletionsBody, str, LLMProviderPort | None], BoardState]:
+    def _invoke(
+        body: ChatCompletionsBody, tenant_id: str, llm: LLMProviderPort | None
+    ) -> BoardState:
+        node = make_feature_node(dominio, llm=llm)
         estado: BoardState = {
             "tenant_id": tenant_id,
             "spec": _ultima_mensagem(body),
@@ -88,7 +95,9 @@ def _invocar_feature(dominio: Dominio) -> Callable[[ChatCompletionsBody, str], B
     return _invoke
 
 
-def _invocar_platform(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
+def _invocar_platform(
+    body: ChatCompletionsBody, tenant_id: str, llm: LLMProviderPort | None
+) -> BoardState:
     node = make_platform_node()
     estado: BoardState = {
         "tenant_id": tenant_id,
@@ -107,7 +116,9 @@ def _invocar_platform(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
     return node(estado)
 
 
-def _invocar_review(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
+def _invocar_review(
+    body: ChatCompletionsBody, tenant_id: str, llm: LLMProviderPort | None
+) -> BoardState:
     node = make_review_node()
     estado: BoardState = {
         "tenant_id": tenant_id,
@@ -127,7 +138,9 @@ def _invocar_review(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
     return node(estado)
 
 
-def _invocar_architecture(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
+def _invocar_architecture(
+    body: ChatCompletionsBody, tenant_id: str, llm: LLMProviderPort | None
+) -> BoardState:
     node = make_architecture_node()
     estado: BoardState = {
         "tenant_id": tenant_id,
@@ -136,7 +149,9 @@ def _invocar_architecture(body: ChatCompletionsBody, tenant_id: str) -> BoardSta
     return node(estado)
 
 
-def _invocar_sre(body: ChatCompletionsBody, tenant_id: str) -> BoardState:
+def _invocar_sre(
+    body: ChatCompletionsBody, tenant_id: str, llm: LLMProviderPort | None
+) -> BoardState:
     node = make_sre_node()
     estado: BoardState = {
         "tenant_id": tenant_id,
@@ -230,7 +245,8 @@ def _registrar_endpoint(agent: str, spec: dict[str, Any]) -> None:
     ) -> dict:
         provider: ScopeProvider = request.app.state.scope_provider
         tenant_id = provider.tenant_id(request)
-        estado = spec["invocar"](body, tenant_id)
+        llm: LLMProviderPort | None = getattr(request.app.state, "llm_por_agente", {}).get(agent)
+        estado = spec["invocar"](body, tenant_id, llm)
         estado["tenant_id"] = tenant_id
         if body.act:
             estado["act"] = body.act

@@ -4,8 +4,16 @@ Implementa `LLMProviderPort.invoke(prompt, *, system=None)` chamando o
 Sensedia AI Gateway: obtém token via OAuth2 `client_credentials` e chama o
 endpoint de chat (OpenAI-compatível).
 
-Degradação graciosa: sem credenciais configuradas ou em falha de chamada,
-cai no fallback determinístico (mesmo comportamento do `_DefaultLLM` do
+Suporta dois modos:
+- **Modo único** (compatibilidade): um par de credenciais + endpoint via env
+  (`AI_GATEWAY_*`), usado por todos os agentes.
+- **Modo multi-agente**: um par de credenciais + endpoint por agente
+  (`AI_GATEWAY_<AGENT>_CLIENT_ID/SECRET/CHAT_ENDPOINT`), fiel ao contrato de
+  7 clientes em `Inicio/definicoes/oao-endpoints-and-scopes.md`. O método
+  `provider_para(agente)` resolve o provider configurado para aquele agente.
+
+Degradação graciosa: sem credenciais configuradas ou em falha de chamada, cai
+no fallback determinístico (mesmo comportamento do `_DefaultLLM` do
 `feature_node`) — mantém os testes verdes sem infra.
 """
 
@@ -17,6 +25,17 @@ import httpx
 
 from open_agentic_ops.ports import LLMProviderPort
 
+# Agentes da superfície de integração externa (contrato oao-endpoints-and-scopes).
+AGENTES_LLM = (
+    "intake",
+    "feature-backend",
+    "feature-frontend",
+    "platform",
+    "review",
+    "architecture",
+    "sre",
+)
+
 
 class _FallbackLLM:
     """Fallback determinístico quando não há credenciais do AI Gateway."""
@@ -25,8 +44,27 @@ class _FallbackLLM:
         return f"[implementado] {prompt[:200]}"
 
 
+def _env_por_agente(agente: str) -> dict[str, str]:
+    """Lê as credenciais do agente das env vars `AI_GATEWAY_<AGENT>_*`.
+
+    O nome do agente é normalizado (hífens → underscore, maiúsculas) para
+    formar o sufixo da variável, ex.: `feature-backend` →
+    `AI_GATEWAY_FEATURE_BACKEND_CLIENT_ID`.
+    """
+    sufixo = agente.upper().replace("-", "_")
+    return {
+        "client_id": os.getenv(f"AI_GATEWAY_{sufixo}_CLIENT_ID", ""),
+        "client_secret": os.getenv(f"AI_GATEWAY_{sufixo}_CLIENT_SECRET", ""),
+        "chat_endpoint": os.getenv(f"AI_GATEWAY_{sufixo}_CHAT_ENDPOINT", ""),
+    }
+
+
 class SensediaAIGatewayProvider:
-    """Provider real do Sensedia AI Gateway (OAuth2 client_credentials + chat)."""
+    """Provider real do Sensedia AI Gateway (OAuth2 client_credentials + chat).
+
+    No modo multi-agente, `provider_para(agente)` retorna um provider
+    configurado com as credenciais daquele agente (ou fallback se ausentes).
+    """
 
     def __init__(
         self,
@@ -88,3 +126,26 @@ class SensediaAIGatewayProvider:
             return self._chamar_chat(token, prompt, system)
         except Exception:
             return self._fallback.invoke(prompt, system=system)
+
+    def provider_para(self, agente: str) -> SensediaAIGatewayProvider:
+        """Retorna um provider configurado para o agente (modo multi-agente).
+
+        Lê as credenciais do agente das env vars `AI_GATEWAY_<AGENT>_*`. Se o
+        agente não tiver credenciais completas, retorna um provider que degrada
+        para o fallback determinístico (não quebra os demais agentes).
+        """
+        creds = _env_por_agente(agente)
+        return SensediaAIGatewayProvider(
+            oauth_endpoint=self._oauth_endpoint,
+            client_id=creds["client_id"],
+            client_secret=creds["client_secret"],
+            chat_endpoint=creds["chat_endpoint"],
+            model=self._model,
+            timeout=self._timeout,
+            fallback=self._fallback,
+            client=self._client,
+        )
+
+    def mapa_por_agente(self) -> dict[str, LLMProviderPort]:
+        """Mapa `{agente: provider}` para todos os agentes da superfície."""
+        return {agente: self.provider_para(agente) for agente in AGENTES_LLM}

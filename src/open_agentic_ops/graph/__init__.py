@@ -134,6 +134,7 @@ def make_deploy_node(
 def build_graph(
     *,
     llm: LLMProviderPort | None = None,
+    llm_por_dominio: dict[str, LLMProviderPort] | None = None,
     tools: ToolExecutionPort | None = None,
     skill_dir: str | None = None,
     eval_runner: Callable[[str], ResultadoEval] | None = None,
@@ -143,9 +144,22 @@ def build_graph(
     registrar_precedente: Callable[..., None] | None = None,
     revisar: Callable[[dict], dict] | None = None,
 ) -> StateGraph:
-    """Monta o grafo da squad com os nós e arestas condicionais."""
-    feature_backend = make_feature_node("backend", llm=llm, tools=tools, skill_dir=skill_dir)
-    feature_frontend = make_feature_node("frontend", llm=llm, tools=tools, skill_dir=skill_dir)
+    """Monta o grafo da squad com os nós e arestas condicionais.
+
+    `llm_por_dominio` (ex.: `{"backend": <provider>, "frontend": <provider>}`)
+    permite wirear um LLM distinto por domínio (Feature backend/frontend),
+    fiel ao contrato de clientes por agente. `llm` permanece como fallback
+    único quando `llm_por_dominio` não é fornecido.
+    """
+    por_dominio = llm_por_dominio or {}
+    llm_backend = por_dominio.get("backend") or llm
+    llm_frontend = por_dominio.get("frontend") or llm
+    feature_backend = make_feature_node(
+        "backend", llm=llm_backend, tools=tools, skill_dir=skill_dir
+    )
+    feature_frontend = make_feature_node(
+        "frontend", llm=llm_frontend, tools=tools, skill_dir=skill_dir
+    )
     platform = make_platform_node(tools=tools)
     architecture = make_architecture_node()
     review = make_review_node(revisar=revisar)

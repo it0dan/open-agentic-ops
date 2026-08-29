@@ -136,3 +136,30 @@ def test_act_nao_altera_tenant_efetivo(client):
     assert r.status_code == 200
     content = r.json()["choices"][0]["message"]["content"]
     assert "tenant-a" in content
+
+
+class _RegistradorLLM:
+    def __init__(self, nome: str) -> None:
+        self.nome = nome
+
+    def invoke(self, prompt: str, *, system: str | None = None) -> str:
+        return f"[{self.nome}] implementado"
+
+
+def test_feature_backend_usa_llm_do_agente():
+    from api.main import create_app as _create_app
+
+    with TestClient(
+        _create_app(
+            scope_provider=HeaderScopeProvider(),
+            llm_por_agente={"feature-backend": _RegistradorLLM("backend")},
+        )
+    ) as c:
+        r = c.post(
+            "/oao/feature-backend/chat/completions",
+            headers=_headers("oa-feature-backend"),
+            json=_body("Implementar endpoint de portabilidade."),
+        )
+    assert r.status_code == 200
+    content = r.json()["choices"][0]["message"]["content"]
+    assert "[backend]" in content

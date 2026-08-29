@@ -106,12 +106,42 @@ def _llm_default() -> LLMProviderPort | None:
     return None
 
 
+def _llm_por_dominio_default() -> dict[str, LLMProviderPort] | None:
+    """Mapa de LLM por domínio (Feature backend/frontend) via AI Gateway.
+
+    Usa o modo multi-agente do `SensediaAIGatewayProvider`: cada domínio usa as
+    credenciais do seu agente (`oa-feature-backend`/`oa-feature-frontend`).
+    Retorna `None` se não houver credenciais globais (OAuth endpoint) — o grafo
+    cai no fallback determinístico.
+    """
+    if not os.getenv("AI_GATEWAY_OAUTH_ENDPOINT"):
+        return None
+    gateway = SensediaAIGatewayProvider()
+    return {
+        "backend": gateway.provider_para("feature-backend"),
+        "frontend": gateway.provider_para("feature-frontend"),
+    }
+
+
+def _llm_por_agente_default() -> dict[str, LLMProviderPort]:
+    """Mapa `{agente: provider}` para a superfície `/oao/*` (modo multi-agente).
+
+    Cada agente usa as credenciais do seu `client_id` no AI Gateway. Sem OAuth
+    endpoint configurado, retorna um mapa vazio — os endpoints `/oao/*` usam o
+    fallback determinístico (comportamento atual).
+    """
+    if not os.getenv("AI_GATEWAY_OAUTH_ENDPOINT"):
+        return {}
+    return SensediaAIGatewayProvider().mapa_por_agente()
+
+
 def create_app(
     *,
     revisar: Callable[[dict], dict] | None = None,
     notifier: Callable[[str, dict[str, Any]], None] | None = None,
     scope_provider: ScopeProvider | None = None,
     llm: LLMProviderPort | None = None,
+    llm_por_agente: dict[str, LLMProviderPort] | None = None,
 ) -> FastAPI:
     """Monta o app FastAPI com o grafo compilado e o checkpointer (board)."""
     app = FastAPI(title="Open Agentic Ops — FDE Console API")
@@ -126,6 +156,9 @@ def create_app(
 
     provider: ScopeProvider = scope_provider or _provider_default()
     app.state.scope_provider = provider
+    app.state.llm_por_agente = (
+        llm_por_agente if llm_por_agente is not None else _llm_por_agente_default()
+    )
     app.include_router(agents_router)
 
     def criar_demanda(texto: str, tenant_id: str) -> str:
@@ -154,6 +187,7 @@ def create_app(
         registrar_precedente=registrar_precedente,
         revisar=revisar,
         llm=llm,
+        llm_por_dominio=_llm_por_dominio_default(),
     ).compile(checkpointer=build_dev_checkpointer())
     view = BoardView(graph.checkpointer)
     resume = make_resume_handler(notifier=notifier or _notifier_log)

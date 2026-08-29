@@ -175,3 +175,18 @@ def test_endpoint_sem_token_retorna_403():
             json={"messages": [{"role": "user", "content": "x"}]},
         )
     assert r.status_code == 403
+
+
+def test_console_sem_token_retorna_401():
+    provider = _provider()
+    with _client(provider) as c:
+        r = c.get("/tasks")
+    assert r.status_code in (401, 403)
+
+
+def test_console_com_jwt_valido_responde_200():
+    provider = _provider()
+    token = _gerar_token(client_id="oa-intake", tenant_id="tenant-a")
+    with _client(provider) as c:
+        r = c.get("/tasks", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200

@@ -8,6 +8,7 @@ fresco (fixture `client`) para isolar o estado do board.
 import pytest
 from fastapi.testclient import TestClient
 
+from api.agents import HeaderScopeProvider
 from api.main import create_app
 from open_agentic_ops.nodes.intake import (
     carregar_heuristica,
@@ -23,7 +24,7 @@ CASO_ALTA = (
 
 @pytest.fixture
 def client() -> TestClient:
-    with TestClient(create_app()) as c:
+    with TestClient(create_app(scope_provider=HeaderScopeProvider())) as c:
         yield c
 
 
@@ -260,7 +261,7 @@ def test_resume_hitl_dispara_notifier():
     def spy(thread_id: str, payload: dict) -> None:
         chamadas.append((thread_id, payload))
 
-    with TestClient(create_app(notifier=spy)) as c:
+    with TestClient(create_app(notifier=spy, scope_provider=HeaderScopeProvider())) as c:
         intake = c.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
         tid = intake["thread_id"]
         c.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})

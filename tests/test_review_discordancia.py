@@ -8,6 +8,7 @@ na Audit e docstring do Architecture.
 from fastapi.testclient import TestClient
 from langgraph.types import Command
 
+from api.agents import HeaderScopeProvider
 from api.main import create_app
 from open_agentic_ops.graph import build_graph
 from open_agentic_ops.nodes.architecture_node import make_architecture_node
@@ -134,7 +135,9 @@ def test_hitl_payload_sem_review_discordancia():
 
 
 def test_origem_discordancia_exposta_na_audit():
-    with TestClient(create_app(revisar=_revisar_discorda)) as client:
+    with TestClient(
+        create_app(revisar=_revisar_discorda, scope_provider=HeaderScopeProvider())
+    ) as client:
         resp = client.post(
             "/intake",
             json={

@@ -14,6 +14,7 @@ fronteira (Intake) — nunca expõe PII raw (RNF-1). Endpoints:
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from collections.abc import Callable
 from typing import Any, Literal
@@ -24,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from api.agents import HeaderScopeProvider, ScopeProvider
 from api.agents import router as agents_router
+from open_agentic_ops.auth import JWTScopeProvider
 from open_agentic_ops.gates.hitl_gate import make_resume_handler
 from open_agentic_ops.graph import build_graph
 from open_agentic_ops.nodes.intake import (
@@ -33,6 +35,8 @@ from open_agentic_ops.nodes.intake import (
 )
 from open_agentic_ops.observability import sanitize_for_telemetry
 from open_agentic_ops.persistence import BoardView, build_dev_checkpointer
+from open_agentic_ops.ports import LLMProviderPort
+from open_agentic_ops.providers.ai_gateway import SensediaAIGatewayProvider
 from open_agentic_ops.scopes import TENANT_DEFAULT
 from open_agentic_ops.similaridade import buscar_precedentes, registrar_precedente
 from open_agentic_ops.state import (
@@ -81,11 +85,34 @@ def _notifier_log(thread_id: str, payload: dict[str, Any]) -> None:
     )
 
 
+def _provider_default() -> ScopeProvider:
+    """Provider de auth da superfície `/oao/*` (Fase B).
+
+    `OAO_AUTH_MODE=jwt` (default) usa `JWTScopeProvider` (Keycloak real);
+    `OAO_AUTH_MODE=header` usa `HeaderScopeProvider` (dev/teste, Camada 1).
+    """
+    if os.getenv("OAO_AUTH_MODE", "jwt").lower() == "header":
+        return HeaderScopeProvider()
+    return JWTScopeProvider()
+
+
+def _llm_default() -> LLMProviderPort | None:
+    """LLM real (Sensedia AI Gateway) se credenciais presentes; senão None.
+
+    `None` faz o `build_graph` usar o fallback determinístico (comportamento
+    atual). O provider degrada graciosamente sem credenciais.
+    """
+    if os.getenv("AI_GATEWAY_CLIENT_ID") and os.getenv("AI_GATEWAY_CLIENT_SECRET"):
+        return SensediaAIGatewayProvider()
+    return None
+
+
 def create_app(
     *,
     revisar: Callable[[dict], dict] | None = None,
     notifier: Callable[[str, dict[str, Any]], None] | None = None,
     scope_provider: ScopeProvider | None = None,
+    llm: LLMProviderPort | None = None,
 ) -> FastAPI:
     """Monta o app FastAPI com o grafo compilado e o checkpointer (board)."""
     app = FastAPI(title="Open Agentic Ops — FDE Console API")
@@ -98,7 +125,7 @@ def create_app(
         allow_headers=["*"],
     )
 
-    provider: ScopeProvider = scope_provider or HeaderScopeProvider()
+    provider: ScopeProvider = scope_provider or _provider_default()
     app.state.scope_provider = provider
     app.include_router(agents_router)
 
@@ -127,6 +154,7 @@ def create_app(
         buscar_precedentes=buscar_precedentes,
         registrar_precedente=registrar_precedente,
         revisar=revisar,
+        llm=llm,
     ).compile(checkpointer=build_dev_checkpointer())
     view = BoardView(graph.checkpointer)
     resume = make_resume_handler(notifier=notifier or _notifier_log)

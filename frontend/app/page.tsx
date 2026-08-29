@@ -1,5 +1,8 @@
-import { HomeRedirect } from "@/components/home-redirect";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return <HomeRedirect />;
+import { auth } from "@/auth";
+
+export default async function Home() {
+  const session = await auth();
+  redirect(session ? "/dashboard" : "/login");
 }

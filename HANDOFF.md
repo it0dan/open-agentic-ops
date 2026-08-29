@@ -2,37 +2,64 @@
 
 Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md`). Este documento compacta o que foi feito, as decisões fechadas, os artefatos e os próximos passos.
 
-## Trabalho desta sessão (Fases 5 e 6 — E2E no browser + validação de logs sem PII)
+## Trabalho desta sessão (HITL por etapa + matriz de autonomia + ajustes do modal)
 
-**Tarefa:** fechar a validação ponta a ponta do console do FDE — **Fase 5** (E2E no browser via Playwright cobrindo login OIDC, TenantBadge, demandas, HITL, autoria e Audit) e **Fase 6** (captura de logs da API em arquivo e auditoria de que nenhum log contém PII raw). **Implementado e validado.**
+**Tarefa:** (1) corrigir o fechamento lento do modal de nova demanda e a linguagem do botão; (2) implementar **HITL em toda etapa** — o reasoning de cada agente é salvo e estruturado para o FDE validar/aprovar antes de prosseguir, com evolução planejada para LLM-as-a-judge e autonomia progressiva (do menos crítico ao mais crítico). **Backend completo e validado; frontend em andamento; testes e docs pendentes.**
 
 ### ✅ Concluído
 
-**Fase 5 — E2E no browser (Playwright):**
-- `@playwright/test` instalado no `frontend/` (devDependency) + browser chromium baixado.
-- `frontend/playwright.config.ts` — baseURL `http://localhost:3000`, `reuseExistingServer: true` (reusa API 8000 + console 3000 já em execução), projeto chromium, reporter html.
-- `frontend/e2e/console.spec.ts` — 5 testes cobrindo o fluxo completo do FDE:
-  1. **Login OIDC** via Keycloak (`fde-tenant-a`/`fde-password`) → redirect `/dashboard` + **TenantBadge** `tenant-a`.
-  2. **Demandas reais** por tenant (sem modo demo).
-  3. **HITL** — aprovar demanda em `aguardando_hitl` (verifica que o painel HITL some após aprovar).
-  4. **Autoria de spec** — liberar demanda em `aguardando_autoria` (verifica que o painel de autoria some).
-  5. **Audit** — classificações do Intake por tenant.
-- Script `test:e2e` adicionado ao `frontend/package.json`.
-- **Resultado: 5/5 testes passando** (`npx playwright test`).
+**Parte A — Correções rápidas (modal + linguagem):**
+- `frontend/components/nova-demanda-modal.tsx` — **fechamento otimista**: o modal fecha imediatamente após disparar `injetarDemanda` (não espera a resposta da API, que demorava por executar o grafo inteiro). Toast de sucesso/erro continua em background.
+- Linguagem: botão `"Enviar para o Intake"` → **`"Criar demanda"`**; `"Enviando…"` → `"Criando…"`; footer `"Pronto para enviar"` → `"Pronto para criar"`.
+- `frontend/components/nova-demanda-modal.test.tsx` atualizado (2 referências ao texto antigo). **6/6 testes passando.**
 
-**Fase 6 — captura de logs + auditoria PII:**
-- `api/main.py` ganhou `_configurar_logging()` — `FileHandler` persistindo logs em `logs/api.log` (criado automaticamente). O `_notifier_log` já sanitiza o payload via `sanitize_for_telemetry` (ADR-0006).
-- **Fluxo exercitado com PII:** criada demanda via `/intake` com texto contendo CPF (`123.456.789-09`), chave Pix UUID, conta/agência (`1234-5`/`56789-0`) e e-mail (`cliente@exemplo.com`); percorrido o ciclo completo (autoria → `aguardando_hitl` → aprovado → `monitorado`), disparando o `_notifier_log` 2x.
-- **Auditoria do `logs/api.log`:** **nenhum PII raw** encontrado (CPF, chave Pix, conta/agência e e-mail ausentes do log). Confirmação direta: `sanitize_for_telemetry` mascara `[CPF]`, `[CHAVE_PIX]`, `[CONTA]`, `[EMAIL]`.
-- **Nota (over-redaction):** o `thread_id` (UUID) é mascarado como `[CHAVE_PIX]` pelo padrão de chave Pix — efeito colateral aceitável do over-redaction (ADR-0006 prioriza mascarar mais).
+**Parte B — HITL por etapa (backend completo e validado):**
+- **B1. `RaciocinioEtapa`** em `src/open_agentic_ops/state/__init__.py` — novo TypedDict (`etapa`, `agente`, `raciocinio`, `evidencias`, `status`, `decisao_fde`, `timestamp`) + campo `raciocinios` (append) + helper `novo_raciocinio()`.
+- **B2. Matriz de autonomia** — novo `src/open_agentic_ops/autonomia.py`: `Autonomia = humano|llm_judge|autonomo`, `MATRIZ_AUTONOMIA` (inicialmente tudo `humano`), `autonomia_da_etapa()`. A matriz é o ponto único de configuração da evolução de autonomia.
+- **B3. Gate genérico** — `src/open_agentic_ops/gates/hitl_gate.py`: `make_hitl_gate(etapa, autonomia)` — `autonomo` não pausa, `llm_judge` fallback determinístico (fase 2), `humano` pausa via `interrupt()` com o raciocínio da etapa.
+- **B4. Nós registram raciocínio** — `intake_node`, `feature_node`, `review_node`, `architecture_node`, `sre_node` agora registram `raciocinios`.
+- **B5. Grafo** — `src/open_agentic_ops/graph/__init__.py`: gates por etapa (`hitl_intake`, `hitl_feature`, `hitl_platform`, `hitl_review`, `hitl_architecture`, `hitl_deploy`, `hitl_sre`). Fan-out do feature corrigido (um gate → ambos worktrees via `route_by_hitl_feature`). **Rejeição em qualquer etapa termina o grafo.** Removido o nó `marcar_hitl` órfão.
+- **B6. API** — `api/main.py`: `resume_endpoint` trata qualquer `hitl_*` como gate de HITL; `_detalhe`/`_resumo` expõem `raciocinios` e `aguardando_etapa` (derivado de `state.next`).
+- **Validação via API real:** criar demanda → `aguardando: intake` → resume → `feature` → `platform` → `review` → `deploy` → `sre` → `monitorado`. Raciocínios acumulados corretamente. Fluxo de alta ambiguidade (autoria) e rejeição também validados.
+
+**Parte B — frontend (em andamento):**
+- `frontend/lib/mock-data.ts` — tipos `RaciocinioEtapa` e campos `raciocinios`/`aguardando_etapa` adicionados ao tipo `Demanda`.
+- `frontend/app/(dashboard)/tasks/[threadId]/page.tsx` — painel HITL agora é **por etapa** (exibe o raciocínio do agente da etapa pendente + botões Aprovar/Rejeitar/Aprovar com ressalvas) e nova aba **"Raciocínio"** (timeline de todos os raciocínios dos agentes). **Lint limpo; build ainda não rodado.**
+
+### ✅ Concluído (finalização da sessão)
+
+**B7 (frontend) — build + smoke E2E:**
+- `npm run lint` limpo; `npm test` → **20 passed**; `npm run build` → verde.
+- `frontend/lib/mock-data.ts` — `demandasMock[0]` ganhou `aguardando_etapa: "review"` (o painel HITL por etapa depende desse campo).
+- **Smoke E2E via API real:** criar demanda → `aguardando: intake` → resume → `feature` → `platform` → `review` → `deploy` → `sre` → `monitorado`. Sequência de gates confirmada: **intake → feature → platform → review → deploy → sre**.
+
+**B8 (testes) — todos verdes:**
+- `tests/test_graph.py` — helpers `_aprovar_todos_gates` e `_aprovar_ate_eval` dirigem o fluxo de múltiplos gates; 13/13 passando.
+- `tests/test_api.py` — helper `_aprovar_todos_gates_api`; 22/22 passando.
+- `tests/test_llm_wire.py` — 3/3 passando.
+- `tests/test_review_discordancia.py` — helper `_aprovar_ate_review`; 7/7 passando.
+- **Novo `tests/test_autonomia.py`** — 6 testes da matriz (humano pausa, autônomo não pausa, llm_judge fallback, grafo autônomo roda até o fim, grafo humano pausa no primeiro gate).
+- **Bug corrigido:** `MATRIZ_AUTONOMIA` não tinha a etapa `deploy` — adicionado `"deploy": "humano"` em `src/open_agentic_ops/autonomia.py` (o `hitl_deploy` usava o default `humano`, mas o teste de grafo autônomo revelou a inconsistência).
+- **Validação:** `poetry run pytest` → **117 passed**; `poetry run ruff check .` → limpo.
+
+**Parte C (docs):**
+- **ADR-0025** — `docs/adr/0025-hitl-por-etapa-e-matriz-de-autonomia.md` (HITL por etapa + matriz de autonomia).
+- **Feature Intake Brief** — `docs/sdd/feature-intakes/hitl-por-etapa.md`.
+- **Change OpenSpec `hitl-por-etapa`** — `openspec/changes/hitl-por-etapa/` (proposal, design, specs, tasks), **validado** (`openspec validate --changes` → valid).
+
+### ⏳ Pendente (para finalizar esta sessão)
+
+1. **Arquivar o change `hitl-por-etapa`** em `openspec/archive/2026-08-29-hitl-por-etapa/` (padrão do projeto).
+2. **Commits coesos** (conventional commits) e push (3 commits já à frente de `origin/main` aguardando push).
 
 ### Estado do git
-Working tree com mudanças não commitadas (aguardando commit):
-- Modificados: `api/main.py` (load_dotenv + `_configurar_logging`), `frontend/package.json`, `frontend/package-lock.json`, `HANDOFF.md` (esta seção).
-- Novos: `frontend/playwright.config.ts`, `frontend/e2e/console.spec.ts`, `logs/api.log` (runtime, não versionar).
+Working tree com mudanças **não commitadas**:
+- Modificados: `api/main.py`, `frontend/app/(dashboard)/tasks/[threadId]/page.tsx`, `frontend/components/nova-demanda-modal.tsx`, `frontend/components/nova-demanda-modal.test.tsx`, `frontend/lib/mock-data.ts`, `src/open_agentic_ops/gates/hitl_gate.py`, `src/open_agentic_ops/graph/__init__.py`, `src/open_agentic_ops/nodes/{architecture,feature,intake,review,sre}_node.py`, `src/open_agentic_ops/state/__init__.py`, `src/open_agentic_ops/autonomia.py`, `tests/test_graph.py`, `tests/test_api.py`, `tests/test_llm_wire.py`, `tests/test_review_discordancia.py`, `HANDOFF.md`.
+- Novos: `src/open_agentic_ops/autonomia.py`, `tests/test_autonomia.py`, `docs/adr/0025-hitl-por-etapa-e-matriz-de-autonomia.md`, `docs/sdd/feature-intakes/hitl-por-etapa.md`, `openspec/changes/hitl-por-etapa/`.
+- **Testes verdes (117 passed, ruff limpo, frontend 20 passed + build verde)** — pronto para commitar.
 
 ### Próxima ação recomendada
-Commitar (conventional commits coesos) e pushar. Depois, seguir as pendências do item 8 (Eval gate real em duas camadas LangSmith, ADR-0018; métricas reais de SLO no SRE; reasoners LLM nos nós intake/review/architecture/sre) e item 9 (checkpointer Postgres real + habilitar MCPs).
+Arquivar o change `hitl-por-etapa` e commitar em commits coesos + pushar. Em seguida, seguir as pendências do item 8 (Eval gate real em duas camadas LangSmith, ADR-0018; métricas reais de SLO no SRE; reasoners LLM nos nós intake/review/architecture/sre) e item 9 (checkpointer Postgres real + habilitar MCPs).
 
 ## Estado atual
 

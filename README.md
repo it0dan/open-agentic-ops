@@ -58,7 +58,7 @@ Python + LangGraph (orquestração) + LangSmith (observabilidade/avaliação) + 
 O console do FDE é composto por duas camadas no mesmo repositório:
 
 - **API** (`api/`): FastAPI expondo o grafo LangGraph. Endpoints: `GET /tasks`, `GET /tasks/{thread_id}`, `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica`.
-- **Console** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Tasks (`/tasks`), Detalhe (`/tasks/[id]`), Graph (`/graph`), Audit (`/audit`). Nova demanda é criada via modal no Tasks (chama `POST /intake`); autoria de spec acontece no detalhe da demanda. Rotas legadas `/loops`, `/auditoria` e `/board` redirecionam (307) para `/graph`, `/audit` e `/tasks`; `/registry` e `/intake` retornam 404.
+- **Console** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Tasks (`/tasks`), Detalhe (`/tasks/[id]`), Graph (`/graph`), Audit (`/audit`). Login OIDC real via Keycloak (Auth.js/next-auth, ADR-0024). Nova demanda é criada via modal no Tasks (chama `POST /intake`); autoria de spec acontece no detalhe da demanda. Rotas legadas `/loops`, `/auditoria` e `/board` redirecionam (307) para `/graph`, `/audit` e `/tasks`; `/registry` e `/intake` retornam 404.
 
 Para rodar localmente:
 
@@ -107,6 +107,7 @@ O console consome a API em `http://localhost:8000` (configurável via `NEXT_PUBL
 - [x] Fase A da superfície de integração externa — endpoints `/oao/<agent>/chat/completions`, `tenant_id` no `BoardState`, `scopes.py`, delegação `act` (85 passed)
 - [x] Fase B da superfície de integração externa — auth real OAuth2/Keycloak + JWT (`JWTScopeProvider` via JWKS), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT (96 passed)
 - [x] Fase C (multi-tenancy, ADR-0015/ADR-0023) — isolamento por tenant no console do FDE: `BoardView` filtrado por `tenant_id`, endpoints com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados (103 passed)
+- [x] Login OIDC real no console (ADR-0024) — Auth.js/next-auth + Keycloak: sessão com `access_token` + `tenant_id`, guard via `proxy.ts` + `auth()`, `lib/api.ts` enviando Bearer token, fim do modo demo (frontend lint/build/test verdes)
 
 ## Regras
 

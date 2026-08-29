@@ -123,6 +123,53 @@ Working tree com mudanças não commitadas (aguardando commit):
 ### Próxima ação recomendada
 Commitar (conventional commits coesos) e pushar. Depois, **FDE por tenant no console (login OIDC no frontend)** — o console passa a exigir Bearer token JWT nos endpoints de dados, mas o frontend ainda não envia token (transição documentada); o login OIDC fica para a próxima rodada. Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
 
+## Trabalho desta sessão (OIDC no console — login real no frontend)
+
+**Tarefa:** implementar o **login OIDC real no frontend** (Auth.js/next-auth + Keycloak) para fechar o isolamento por tenant no console. O backend (Fase C) exige Bearer token JWT nos endpoints de dados, mas o frontend ainda tinha login mockado (`fde-auth=mock`) e não enviava token — toda chamada à API retornava 401 e o frontend caía em **modo demo** (dados sintéticos). Seguiu o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado, validado e arquivado.**
+
+### ✅ Concluído
+
+**Diagnóstico do modo demo:** os serviços estão rodando (backend uvicorn na 8000, frontend next dev, Keycloak healthy, Postgres healthy). O modo demo é o fallback do frontend quando a API retorna 401 — o frontend chama `GET /tasks` sem Bearer token e a API (Fase C) responde 401, ativando `usandoMock=true` em `frontend/hooks/use-demandas-polling.ts`. Reiniciar serviços não resolve; é preciso o frontend autenticar.
+
+**Feature Intake Brief** — `docs/sdd/feature-intakes/oao-console-oidc.md` (template do projeto).
+
+**Change OpenSpec `oao-console-oidc`** — criado via CLI `openspec`, **validado** (`openspec validate --changes` → valid):
+- `proposal.md` — por que implementar OIDC no console.
+- `design.md` — decisões D22–D26 (Auth.js + Keycloak, expor access_token/tenant_id, guard via proxy.ts + auth(), lib/api.ts com Bearer, login com signIn).
+- `specs/oao-console-oidc/spec.md` — 3 requirements (ADDED).
+- `tasks.md` — 6 grupos, 18 tasks.
+
+**Dependência instalada:** `next-auth@5.0.0-beta.32` (v5, Auth.js) no frontend (`frontend/package.json` + `package-lock.json`).
+
+**Implementação (Apply):**
+- `frontend/auth.ts` — provider Keycloak (client `oao-console`, issuer `http://localhost:8080/realms/oao`), callbacks `jwt`/`session` expondo `access_token` + `tenant_id`.
+- `frontend/app/api/auth/[...nextauth]/route.ts` — handlers GET/POST.
+- `frontend/.env.local` — `AUTH_SECRET`, `AUTH_KEYCLOAK_ID`, `AUTH_KEYCLOAK_ISSUER`, `AUTH_TRUST_HOST`, `NEXT_PUBLIC_API_URL` (não commitado, gitignore).
+- `frontend/types/next-auth.d.ts` — augmentation de `Session`/`JWT` (em `@auth/core/types`, pois `getSession`/`useSession` tipam por esse módulo).
+- `frontend/proxy.ts` (Next 16, substitui `middleware.ts`) — optimistic check via cookie de sessão; não-autenticados → `/login`.
+- `app/(dashboard)/layout.tsx` — guard server-side via `auth()` + `redirect` (defesa em profundidade).
+- `app/login/page.tsx` — botão `signIn("keycloak")`; removido form mockado e `localStorage fde-auth`.
+- `components/home-redirect.tsx` — verifica sessão real via `useSession` (não `fde-auth`).
+- `components/auth-provider.tsx` + `app/layout.tsx` — `SessionProvider` no root.
+- `lib/api.ts` — injeta `Authorization: Bearer <access_token>` no `request()` (ponto único, cobre todas as funções de fetch).
+
+**Testes e validação:**
+- `app/login/page.test.tsx` reescrito para o fluxo OIDC (mocka `signIn`).
+- `npm run lint` → limpo; `npm test` → **18 passed**; `npm run build` → verde (proxy reconhecido como "ƒ Proxy (Middleware)").
+- **E2E com Keycloak:** token via password grant (`oao-console` + `fde-tenant-a`) com claims `tenant_id=tenant-a` e `azp=oao-console` → `GET /tasks` com Bearer → **200**; sem token → **401**. Confirma o fluxo OIDC completo (frontend autentica → envia Bearer → backend isola por tenant).
+
+**ADR-0024** — `docs/adr/0024-console-oidc-login.md` (login OIDC no console).
+
+**Change OpenSpec `oao-console-oidc`** — **arquivado** em `openspec/archive/2026-08-29-oao-console-oidc/` (spec sincronizada em `openspec/specs/oao-console-oidc/spec.md`).
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `frontend/package.json`, `frontend/package-lock.json` (next-auth), `frontend/app/(dashboard)/layout.tsx`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/login/page.test.tsx`, `frontend/components/home-redirect.tsx`, `frontend/lib/api.ts`, `README.md`, `ARCHITECTURE.md`, `HANDOFF.md` (esta seção).
+- Novos: `frontend/auth.ts`, `frontend/proxy.ts`, `frontend/components/auth-provider.tsx`, `frontend/app/api/auth/[...nextauth]/route.ts`, `frontend/types/next-auth.d.ts`, `frontend/.env.local` (não commitado), `docs/adr/0024-console-oidc-login.md`, `docs/sdd/feature-intakes/oao-console-oidc.md`, `openspec/archive/2026-08-29-oao-console-oidc/`, `openspec/specs/oao-console-oidc/`.
+
+### Próxima ação recomendada
+Commits coesos (conventional commits) + push (após confirmação). Depois, o E2E completo do login via browser (interação manual no Keycloak) e o smoke test real do AI Gateway (condicionado ao cadastro de scopes/credenciais no gateway).
+
 ## Trabalho desta sessão (Intake Agent — decisão 1: fallback de ambiguidade)
 
 **Tarefa:** maturar o próximo agente/sessão do documento de definições (`Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md`) — o **Intake Agent** (seção 6). A seção 6 já tinha 4 decisões fechadas; esta sessão focou na **decisão 1 (inverter o fallback de ambiguidade)**, seguindo o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado e arquivado.**
@@ -914,7 +961,7 @@ Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/K
 4. ~~**Intake Agent — decisão 2 (similaridade semântica pgvector)**~~ — **CONCLUÍDO.** Change OpenSpec `intake-similaridade-semantica` implementado e arquivado em `openspec/archive/2026-08-23-intake-similaridade-semantica/`. Substitui a keyword literal "sem precedente" por busca por similaridade semântica (Sentence-Transformers local + pgvector). `make_intake_node(buscar_precedentes=...)` com DI, `registrar_precedente` no nó SRE, `thread_id` na justificativa, degradação graciosa. Extra `langgraph-checkpoint-postgres@^2.0.25` resolvido. **61 passed, ruff limpo; frontend 19 passed.**
 5. ~~**Roteamento condicional dos gates (ADR-0017)**~~ — **CONCLUÍDO.** Arestas condicionais HITL (rejeitado→END) e Eval (reprovado→hitl) + nó `deploy` stub + `Status` ganhou `rejeitado` + decisão do FDE tipada (`decisao`/`observacao`, 3 caminhos) + fix do modal de nova demanda (ESC/clique-fora).
 6. ~~**SRE real (ADR-0019)**~~ — **CONCLUÍDO.** `ResultadoMonitoramento` estruturado (motivo sempre presente) + port `criar_demanda` wireado na API (fecha o loop ADR-0010). Reasoner real (múltiplos sinais + tendência) fica para quando houver observabilidade + LLM.
-7. ~~**Multi-tenancy (ADR-0015)**~~ — **Fase C (backend) CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE: `BoardView` filtrado por `tenant_id`, endpoints (`/tasks`, `/tasks/{thread_id}`, `/resume`, `/intake`, `/auditoria`) com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados. ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — PRÓXIMO PASSO.**
+7. ~~**Multi-tenancy (ADR-0015)**~~ — **Fase C (backend) CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE: `BoardView` filtrado por `tenant_id`, endpoints (`/tasks`, `/tasks/{thread_id}`, `/resume`, `/intake`, `/auditoria`) com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados. ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — EM ANDAMENTO (change `oao-console-oidc`).**
 8. **Substituir fallbacks determinísticos por implementações reais** — `LLMProviderPort` concreto (Sensedia AI Gateway/JWT), Eval gate real em duas camadas LangSmith (ADR-0018), métricas reais de SLO no SRE. **Camada 2 do loop goal-based (integração real LLM + ferramentas MCP git/test) depende desta infra.**
 9. **Provisionar infra do checkpointer** (Postgres/Redis) e habilitar os MCPs `postgres`/`redis`.
 10. **DECISÃO PENDENTE — topologia do Graph:** o `/graph` exibe topologia linear simplificada; a arquitetura real tem fan-out/fan-in dos worktrees backend/frontend em paralelo e aresta de fechamento SRE→Intake (ADR-0010) ainda não visualizados. Registrado como decisão pendente (não bug) em `docs/sdd/feature-intakes/graph-topologia-real.md`. Não implementar nesta rodada.
@@ -925,6 +972,7 @@ Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/K
 15. ~~**Implementar a superfície de integração externa (plano `oao-endpoints-auth-scopes`)**~~ — **Fase A (Camada 1) CONCLUÍDA.** Change OpenSpec `oao-endpoints-auth-scopes` implementado (D1–D6) e **arquivado** em `openspec/archive/2026-08-28-oao-endpoints-auth-scopes/`. `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), endpoints `/oao/<agent>/chat/completions` com `require_scope` em memória, delegação `act`, port `criar_demanda` com tenant. **85 passed, ruff limpo.** **Fases B (auth real OAuth2/Keycloak + ports reais) e C (multi-tenancy, ADR-0015) dependem de infra — PRÓXIMO PASSO.**
 16. ~~**Fase B do `oao-endpoints-auth-scopes` (auth real OAuth2/Keycloak + JWT + LLM real)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-auth-real` implementado (D12–D17) e **arquivado** em `openspec/archive/2026-08-29-oao-auth-real/`. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`, healthcheck na porta 9000), `JWTScopeProvider` (validação via JWKS, extração `client_id` + `tenant_id`), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT. **96 passed, ruff limpo.** Smoke test E2E real com Keycloak validado (200/403/401). **Fase C (multi-tenancy, ADR-0015) CONCLUÍDA — ver item 7.** Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
 17. ~~**Fase C do `oao-endpoints-auth-scopes` (multi-tenancy no console do FDE)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-multi-tenancy` implementado (D18–D21) e **arquivado** em `openspec/archive/2026-08-29-oao-multi-tenancy/`. Isolamento por tenant no console do FDE (BoardView filtrado, 404 anti-enumeração, intake com tenant do JWT, auth real Bearer JWT nos endpoints de dados). ADR-0023. **103 passed, ruff limpo.** **FDE por tenant no console (login OIDC no frontend) — PRÓXIMO PASSO.**
+18. **Login OIDC no console (FDE por tenant)** — **EM ANDAMENTO.** Change OpenSpec `oao-console-oidc` criado e validado (D22–D26). `next-auth@5.0.0-beta.32` instalado. Diagnóstico: o modo demo do frontend é causado pelo 401 (frontend não envia Bearer token; backend Fase C exige JWT). Implementação em andamento: `auth.ts`, API route, `proxy.ts`, guard no layout, login com `signIn("keycloak")`, `lib/api.ts` com Bearer, testes e E2E. ADR-0024 pendente.
 
 ## Fontes-chave
 

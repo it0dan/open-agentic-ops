@@ -111,7 +111,7 @@ O FDE conecta-se ao grafo via `POST /resume` em dois momentos:
 Duas camadas no mesmo repositório (ADR-0014) dão ao FDE uma interface de operação da squad:
 
 - **API FastAPI** (`api/`): expõe o grafo via HTTP. Endpoints: `GET /tasks` (lista), `GET /tasks/{thread_id}` (detalhe, 404 se inexistente), `POST /resume` (HITL), `POST /intake`, `GET /auditoria`, `POST /auditoria/heuristica` (correção prospectiva). Consome apenas o estado já mascarado na fronteira (Intake) — nunca expõe PII raw (RNF-1).
-- **Console web** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Tasks (`/tasks`), Detalhe (`/tasks/[id]`), Graph (`/graph`), Audit (`/audit`). Nova demanda é criada via modal no Tasks (chama `POST /intake`); autoria de spec acontece no detalhe da demanda. Rotas legadas `/loops`, `/auditoria` e `/board` redirecionam (307) para `/graph`, `/audit` e `/tasks`; `/registry` e `/intake` retornam 404. Consome a API via cliente HTTP (`lib/api.ts`), com fallback para dados mock.
+- **Console web** (`frontend/`): Next.js + TypeScript + Tailwind v4 + shadcn/ui. Telas: Login, Dashboard, Tasks (`/tasks`), Detalhe (`/tasks/[id]`), Graph (`/graph`), Audit (`/audit`). Login OIDC real via Keycloak (Auth.js/next-auth, ADR-0024). Nova demanda é criada via modal no Tasks (chama `POST /intake`); autoria de spec acontece no detalhe da demanda. Rotas legadas `/loops`, `/auditoria` e `/board` redirecionam (307) para `/graph`, `/audit` e `/tasks`; `/registry` e `/intake` retornam 404. Consome a API via cliente HTTP (`lib/api.ts`), enviando `Authorization: Bearer <access_token>` da sessão Auth.js.
 
 ```
 [FDE (humano)]
@@ -130,7 +130,8 @@ Além do console do FDE (humana), o OAO tem uma **superfície de integração ex
 
 - **Fase A (Camada 1, harness):** endpoints `/oao/<agent>/chat/completions` para os 7 agentes, `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), `require_scope` em memória, delegação `act`. Change `oao-endpoints-auth-scopes` (arquivado).
 - **Fase B (Camada 2, auth real):** `JWTScopeProvider` valida Bearer token JWT via JWKS (Keycloak), extrai `client_id` + claim `tenant_id`; `get_current_tenant`; `SensediaAIGatewayProvider` (LLM real com degradação graciosa) wireado no `build_graph`; enforcement real de escopos por `client_id` do JWT. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`). Change `oao-auth-real` (arquivado).
-- **Fase C (multi-tenancy, ADR-0015/ADR-0023):** isolamento por tenant no console do FDE — `BoardView` filtrado por `tenant_id` (`all`/`snapshot`), endpoints (`/tasks`, `/tasks/{thread_id}`, `/resume`, `/intake`, `/auditoria`) com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados. Change `oao-multi-tenancy` (arquivado). FDE por tenant no console (login OIDC) permanece como próxima rodada.
+- **Fase C (multi-tenancy, ADR-0015/ADR-0023):** isolamento por tenant no console do FDE — `BoardView` filtrado por `tenant_id` (`all`/`snapshot`), endpoints (`/tasks`, `/tasks/{thread_id}`, `/resume`, `/intake`, `/auditoria`) com 404 anti-enumeração, `POST /intake` com tenant do JWT, auth real (Bearer JWT) nos endpoints de dados. Change `oao-multi-tenancy` (arquivado).
+- **Login OIDC no console (ADR-0024):** Auth.js/next-auth + Keycloak no frontend — sessão com `access_token` + `tenant_id`, guard via `proxy.ts` (Next 16) + `auth()` no layout, `lib/api.ts` enviando `Authorization: Bearer <access_token>`. Fim do modo demo: o FDE opera demandas reais do próprio tenant. Change `oao-console-oidc` (arquivado).
 
 ## Portas (hexagonal leve — ADR-0004)
 

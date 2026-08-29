@@ -22,6 +22,8 @@ sentence-transformers = "^3.0.0"
 pgvector = "^0.3.0"
 psycopg = { version = "^3.2.0", extras = ["binary"] }
 langgraph-checkpoint-postgres = {version = "^2.0.25", optional = true}
+pyjwt = ">=2.8.0"
+cryptography = ">=42.0.0"
 
 [tool.poetry.extras]
 sqlite = ["langgraph-checkpoint-sqlite"]

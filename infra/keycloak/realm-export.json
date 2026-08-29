@@ -1,0 +1,98 @@
+{
+  "realm": "oao",
+  "enabled": true,
+  "displayName": "Open Agentic Ops",
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "clientId": "oa-intake",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-intake-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "oa-feature-backend",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-feature-backend-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "oa-feature-frontend",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-feature-frontend-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "oa-platform",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-platform-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "oa-review",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-review-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "oa-architecture",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-architecture-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "oa-sre",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oa-sre-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "fde-tenant-a",
+      "enabled": true,
+      "email": "fde@tenant-a.example",
+      "firstName": "FDE",
+      "lastName": "Tenant A",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "fde-password",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "tenant_id": ["tenant-a"]
+      }
+    }
+  ]
+}

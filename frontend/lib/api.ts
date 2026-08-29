@@ -1,11 +1,21 @@
+import { getSession } from "next-auth/react";
+
 import type { Demanda, Origem, OrigemSubtipo, Prioridade } from "@/lib/mock-data";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const session = await getSession();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers,
   });
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;

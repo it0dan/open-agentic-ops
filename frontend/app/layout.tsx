@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
+import { AuthProvider } from "@/components/auth-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,10 +36,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider delayDuration={200}>
-            {children}
-            <Toaster richColors position="bottom-right" />
-          </TooltipProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={200}>
+              {children}
+              <Toaster richColors position="bottom-right" />
+            </TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

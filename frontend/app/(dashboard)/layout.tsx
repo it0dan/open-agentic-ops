@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ContentContainer } from "@/components/content-container";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -5,11 +8,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  if (!session) redirect("/login");
+
   return (
     <SidebarProvider>
       <AppSidebar />

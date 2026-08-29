@@ -30,6 +30,53 @@ Estado da sessão para retomada. Gerado ao final de cada sessão (ver `AGENTS.md
 
 **Validação (estado atual):** `poetry run pytest` → **71 passed**; `poetry run ruff check .` → limpo; `uvicorn api.main:app` sobe e responde `/health`, `/tasks`, `/intake`, `/resume`, `/auditoria`, `/auditoria/heuristica`, `/auditoria/ambigua`; `npm run lint` e `npm run build` no `frontend/` verdes; `npm test` (vitest) → **19/19 passed**.
 
+## Trabalho desta sessão (Fase B — auth real OAuth2/Keycloak + JWT + LLM real)
+
+**Tarefa:** implementar a **Fase B (Camada 2)** do plano `oao-endpoints-auth-scopes` — auth real OAuth2 `client_credentials` + JWT (Keycloak) na superfície `/oao/*` (D7), wire do `LLMProviderPort` real (Sensedia AI Gateway) (D8) e enforcement real de escopos por `client_id` do JWT (D9). Seguiu o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado, validado e arquivado.**
+
+### ✅ Concluído
+
+**Feature Intake Brief** — `docs/sdd/feature-intakes/oao-auth-real.md` (template do projeto).
+
+**Change OpenSpec `oao-auth-real`** — criado via CLI `openspec`, **validado** (`openspec validate --changes` → valid) e **arquivado** em `openspec/archive/2026-08-29-oao-auth-real/`:
+- `proposal.md` — por que implementar auth real.
+- `design.md` — decisões D12–D17 (Keycloak via docker-compose, JWTScopeProvider, get_current_tenant, SensediaAIGatewayProvider, wire do LLM, enforcement de escopos).
+- `specs/oao-auth-real/spec.md` — 4 requirements (ADDED), sincronizada em `openspec/specs/oao-auth-real/spec.md`.
+- `tasks.md` — 6 grupos, 19 tasks (todas completas).
+
+**Infra (Keycloak):**
+- `docker-compose.yml` — serviço `keycloak` (imagem `quay.io/keycloak/keycloak:26.0`, porta 8080, management 9000, `start-dev`, volume de import). **Healthcheck corrigido** para a porta de management (9000) — o `/health/ready` do Keycloak fica na 9000, não na 8080.
+- `infra/keycloak/realm-export.json` — realm `oao` com clientes `oa-intake`, `oa-feature-backend`, `oa-feature-frontend`, `oa-platform`, `oa-review`, `oa-architecture`, `oa-sre` (confidential, `client_credentials`) e usuário FDE de teste com atributo `tenant_id`.
+- **Keycloak validado:** realm importado, JWKS disponível, token obtido via `client_credentials`.
+
+**Dependência JWT:** `PyJWT` + `cryptography` adicionados ao `pyproject.toml` (via `poetry add`).
+
+**Auth real (`src/open_agentic_ops/auth.py`):**
+- `JWTScopeProvider` (implementa `ScopeProvider`): valida Bearer token JWT via JWKS (`jwt.PyJWKClient`), extrai `client_id` (claim `azp`/`client_id`) e claim `tenant_id`. Sem token válido → `client_id` vazio (403/401).
+- `get_current_tenant` — dependency FastAPI que retorna o `tenant_id` do JWT (formaliza o acesso para a Fase C).
+- `api/main.py` — `_provider_default()` seleciona `JWTScopeProvider` (default) ou `HeaderScopeProvider` (dev/teste) via `OAO_AUTH_MODE`.
+
+**LLM real (`src/open_agentic_ops/providers/ai_gateway.py`):**
+- `SensediaAIGatewayProvider` (implementa `LLMProviderPort`): OAuth2 `client_credentials` + chat (OpenAI-compatível), com **degradação graciosa** para o fallback determinístico sem credenciais ou em falha.
+- `api/main.py` — `_llm_default()` wirea o provider no `build_graph(llm=...)` quando credenciais presentes.
+
+**Enforcement real de escopos (B.3/D9):** `require_scope` lê o `client_id` do `JWTScopeProvider` (do token, não do header mockado). `pii:raw` negado a todos por construção; `deploy:execute`/`pr:merge` permanecem como restrições de processo declaradas.
+
+**Testes:**
+- `tests/test_auth.py` — 7 testes (token válido extrai client_id/tenant, sem token, token inválido → 401, expirado → 401, endpoint com JWT → 200, escopo negado → 403, sem token → 403).
+- `tests/test_agents_api.py` — atualizado para injetar `HeaderScopeProvider` explicitamente (testes da Camada 1 preservados).
+- `tests/test_ai_gateway_provider.py` — 4 testes (degradação sem credenciais, token + chat, falha na chamada, falha no token).
+
+**Validação:** `poetry run pytest` → **96 passed**; `poetry run ruff check .` → limpo; frontend `npm run lint`/`build` verdes. **Smoke test E2E real com Keycloak:** token `oa-intake` → 200 no `/oao/intake`; sem token → 403; token `oa-review` no `/oao/intake` → 403 (escopo negado); token `oa-review` no `/oao/review` → 200.
+
+### Estado do git
+Working tree com mudanças não commitadas (aguardando commit):
+- Modificados: `docker-compose.yml`, `.env.example`, `pyproject.toml`, `poetry.lock`, `api/main.py`, `tests/test_agents_api.py`, `HANDOFF.md` (esta seção).
+- Novos: `infra/keycloak/realm-export.json`, `src/open_agentic_ops/auth.py`, `src/open_agentic_ops/providers/`, `tests/test_auth.py`, `tests/test_ai_gateway_provider.py`, `docs/sdd/feature-intakes/oao-auth-real.md`, `docs/adr/0022-oauth2-jwt-auth-and-ai-gateway-provider.md`, `openspec/archive/2026-08-29-oao-auth-real/`, `openspec/specs/oao-auth-real/`.
+
+### Próxima ação recomendada
+Commitar (conventional commits coesos) e pushar. Depois, **Fase C (multi-tenancy, ADR-0015)** — isolamento por tenant em todo endpoint (404 anti-enumeração), `BoardView` filtrado, FDE por tenant. O smoke test real do AI Gateway fica condicionado ao cadastro de scopes/credenciais no gateway (feito pelo usuário).
+
 ## Trabalho desta sessão (Intake Agent — decisão 1: fallback de ambiguidade)
 
 **Tarefa:** maturar o próximo agente/sessão do documento de definições (`Inicio/definicoes/open-agentic-ops-definicao-oferta (3).md`) — o **Intake Agent** (seção 6). A seção 6 já tinha 4 decisões fechadas; esta sessão focou na **decisão 1 (inverter o fallback de ambiguidade)**, seguindo o playbook SDD/SPDD (Feature Intake Brief → safe analysis → `/opsx:propose` → Apply). **Implementado e arquivado.**
@@ -830,6 +877,7 @@ Push (após confirmação). Depois, **Fase B (Camada 2)** — auth real OAuth2/K
 13. ~~**Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 3: topologia real do Graph no console.**~~ — **CONCLUÍDO.** Change OpenSpec `graph-topologia-real` implementado e arquivado em `openspec/archive/2026-08-23-graph-topologia-real/`. `loop-stages.ts` divide `feature` em `feature_backend`/`feature_frontend`; `loop-canvas.tsx` representa fan-out/fan-in dos worktrees e a aresta de fechamento SRE→Intake (ADR-0010). Fecha a decisão pendente registrada em `docs/sdd/feature-intakes/graph-topologia-real.md`. **lint/build/test verdes (19/19).**
 14. ~~**Fechar o fluxo/loop fim-a-fim (Camada 1) — Change 4: cobertura de testes do fluxo por origem.**~~ — **CONCLUÍDO.** Novos testes em `tests/test_graph.py` para `estrategia` (com subtipo `nova_funcionalidade`/`melhoria`) e `sre` (via port `criar_demanda` → nova execução `origem=sre`) percorrendo o ciclo completo até `monitorado`. Helper `_levar_ate_monitorado` generaliza o driver para os dois caminhos de ambiguidade. **76 passed, ruff limpo.** Commit `3102eb8`.
 15. ~~**Implementar a superfície de integração externa (plano `oao-endpoints-auth-scopes`)**~~ — **Fase A (Camada 1) CONCLUÍDA.** Change OpenSpec `oao-endpoints-auth-scopes` implementado (D1–D6) e **arquivado** em `openspec/archive/2026-08-28-oao-endpoints-auth-scopes/`. `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), endpoints `/oao/<agent>/chat/completions` com `require_scope` em memória, delegação `act`, port `criar_demanda` com tenant. **85 passed, ruff limpo.** **Fases B (auth real OAuth2/Keycloak + ports reais) e C (multi-tenancy, ADR-0015) dependem de infra — PRÓXIMO PASSO.**
+16. ~~**Fase B do `oao-endpoints-auth-scopes` (auth real OAuth2/Keycloak + JWT + LLM real)**~~ — **CONCLUÍDA.** Change OpenSpec `oao-auth-real` implementado (D12–D17) e **arquivado** em `openspec/archive/2026-08-29-oao-auth-real/`. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`, healthcheck na porta 9000), `JWTScopeProvider` (validação via JWKS, extração `client_id` + `tenant_id`), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT. **96 passed, ruff limpo.** Smoke test E2E real com Keycloak validado (200/403/401). **Fase C (multi-tenancy, ADR-0015) — PRÓXIMO PASSO.** Smoke test real do AI Gateway condicionado ao cadastro de scopes/credenciais no gateway.
 
 ## Fontes-chave
 

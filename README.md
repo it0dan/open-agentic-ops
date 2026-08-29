@@ -104,6 +104,8 @@ O console consome a API em `http://localhost:8000` (configurável via `NEXT_PUBL
 - [x] SRE real (ADR-0019) — `ResultadoMonitoramento` estruturado + port `criar_demanda` (fecha o loop ADR-0010)
 - [x] Change 4 — cobertura de testes do fluxo por origem (`estrategia`/`sre`) até `monitorado` (76 passed)
 - [x] Plano de implementação da superfície de integração externa (endpoints por agente, auth OAuth2/Keycloak, escopos, `act`, tenant) documentado — `oao-endpoints-auth-scopes`
+- [x] Fase A da superfície de integração externa — endpoints `/oao/<agent>/chat/completions`, `tenant_id` no `BoardState`, `scopes.py`, delegação `act` (85 passed)
+- [x] Fase B da superfície de integração externa — auth real OAuth2/Keycloak + JWT (`JWTScopeProvider` via JWKS), `get_current_tenant`, `SensediaAIGatewayProvider` (LLM real com degradação graciosa), enforcement real de escopos por `client_id` do JWT (96 passed)
 
 ## Regras
 

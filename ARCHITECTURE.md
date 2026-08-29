@@ -124,9 +124,13 @@ Duas camadas no mesmo repositório (ADR-0014) dão ao FDE uma interface de opera
 
 O runtime continua funcionando sem o console (camadas incrementais e reversíveis).
 
-### Superfície de integração externa (planejada — Camada 2)
+### Superfície de integração externa (Fases A e B implementadas)
 
-Além do console do FDE (humana), o OAO terá uma **superfície de integração externa** por agente: endpoints `/oao/<agent>/chat/completions` (OpenAI-compatível), auth OAuth2 `client_credentials` (Keycloak), matriz de escopos transversais, delegação `act` e tenant-scoping (ADR-0015). O contrato está em [`Inicio/definicoes/oao-endpoints-and-scopes.md`](Inicio/definicoes/oao-endpoints-and-scopes.md) e o plano de implementação (3 fases) em [`docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md`](docs/sdd/feature-intakes/oao-endpoints-auth-scopes.md) + change OpenSpec `oao-endpoints-auth-scopes`. **Não implementado ainda** — a API atual é apenas o console do FDE; a Fase A (Camada 1, harness) é o próximo passo.
+Além do console do FDE (humana), o OAO tem uma **superfície de integração externa** por agente: endpoints `/oao/<agent>/chat/completions` (OpenAI-compatível), auth OAuth2 `client_credentials` (Keycloak), matriz de escopos transversais, delegação `act` e tenant-scoping (ADR-0015). O contrato está em [`Inicio/definicoes/oao-endpoints-and-scopes.md`](Inicio/definicoes/oao-endpoints-and-scopes.md).
+
+- **Fase A (Camada 1, harness):** endpoints `/oao/<agent>/chat/completions` para os 7 agentes, `tenant_id` no `BoardState`, `scopes.py` (matriz declarativa), `require_scope` em memória, delegação `act`. Change `oao-endpoints-auth-scopes` (arquivado).
+- **Fase B (Camada 2, auth real):** `JWTScopeProvider` valida Bearer token JWT via JWKS (Keycloak), extrai `client_id` + claim `tenant_id`; `get_current_tenant`; `SensediaAIGatewayProvider` (LLM real com degradação graciosa) wireado no `build_graph`; enforcement real de escopos por `client_id` do JWT. Keycloak provisionado no docker-compose (realm `oao`, clientes `oa-*`). Change `oao-auth-real` (arquivado).
+- **Fase C (multi-tenancy, ADR-0015):** isolamento por tenant em todo endpoint (404 anti-enumeração), `BoardView` filtrado, FDE por tenant. **Próximo passo.**
 
 ## Portas (hexagonal leve — ADR-0004)
 

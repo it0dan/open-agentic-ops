@@ -36,7 +36,9 @@ def _rodar_ate_worktrees(app, thread_id: str) -> dict:
         },
         config,
     )
-    return app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
+    app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
+    app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
+    return app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
 
 
 def test_llm_por_dominio_usa_provider_correto():

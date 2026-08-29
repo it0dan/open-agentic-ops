@@ -33,6 +33,9 @@ def test_fluxo_completo_caso_ancora():
     assert result["pii_masked"] is True
     assert "123.456.789-00" not in result["spec"]
     assert "[CPF]" in result["spec"]
+    assert result["status"] == "triado"
+
+    result = app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
     assert result["status"] == "aguardando_autoria"
 
     spec_autorada = (
@@ -43,13 +46,13 @@ def test_fluxo_completo_caso_ancora():
     assert result["spec"] == spec_autorada
     assert result["spec_autor"] == "fde"
 
+    result = app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
     branches = {w["branch"] for w in result["worktrees"]}
     assert branches == {"feat/backend", "feat/frontend"}
-    assert len(result["adrs"]) >= 1
-    assert len(result["feedback_review"]) == 2
 
-    result2 = app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
-    assert result2["decisao_hitl"]["decisao"] == "aprovado"
+    result2 = _aprovar_todos_gates(app, config)
+    assert len(result2["adrs"]) >= 1
+    assert len(result2["feedback_review"]) == 2
     assert result2["resultado_eval"]["aprovado"] is True
     assert result2["status"] == "monitorado"
 
@@ -103,6 +106,7 @@ def test_hitl_rejeitado_termina_o_grafo():
         },
         config,
     )
+    app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
     app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
     result = app.invoke(
         Command(resume={"decisao": "rejeitado", "observacao": "direção errada"}),
@@ -130,7 +134,6 @@ def test_hitl_aprovado_com_ressalvas_segue_ao_eval():
         },
         config,
     )
-    app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
     result = app.invoke(
         Command(
             resume={
@@ -140,9 +143,12 @@ def test_hitl_aprovado_com_ressalvas_segue_ao_eval():
         ),
         config,
     )
-
     assert result["decisao_hitl"]["decisao"] == "aprovado_com_ressalvas"
     assert result["decisao_hitl"]["observacao"] == "revisar cobertura de testes"
+
+    app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
+    result = _aprovar_todos_gates(app, config)
+
     assert result["resultado_eval"]["aprovado"] is True
     assert result["status"] == "monitorado"
 
@@ -170,21 +176,83 @@ def test_eval_reprovado_volta_ao_hitl():
         },
         config,
     )
+    app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
     app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
 
-    result = app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
+    result = _aprovar_ate_eval(app, config)
     assert result["resultado_eval"]["aprovado"] is False
     assert result["status"] == "aguardando_hitl"
 
     state = app.get_state(config)
-    assert "hitl" in state.next
+    assert any(str(n).startswith("hitl_") for n in state.next)
 
-    result2 = app.invoke(
-        Command(resume={"decisao": "aprovado", "observacao": "ok"}),
-        config,
-    )
+    result2 = _aprovar_todos_gates(app, config)
     assert result2["resultado_eval"]["aprovado"] is True
     assert result2["status"] == "monitorado"
+
+
+def _aprovar_todos_gates(
+    app,
+    config: dict,
+    *,
+    spec_autoria: str = "Spec autorada pelo FDE.",
+    decisao: str = "aprovado",
+) -> dict:
+    """Dirige o fluxo aprovando cada gate HITL e a autoria de spec.
+
+    Desde o ADR-0025, o grafo pausa via `interrupt()` em **cada** etapa
+    (`hitl_intake`, `hitl_feature`, `hitl_platform`, `hitl_review`,
+    `hitl_deploy`, `hitl_sre` — e `hitl_architecture` quando a spec toca
+    contrato externo). Este driver itera aprovando cada gate pendente até o
+    grafo terminar (END), injetando a spec do FDE quando pausa em `autoria_spec`.
+    """
+    result: dict | None = None
+    for _ in range(40):
+        nxt = app.get_state(config).next
+        if not nxt:
+            break
+        n = str(nxt[0])
+        if n.startswith("hitl_"):
+            result = app.invoke(
+                Command(resume={"decisao": decisao, "observacao": "ok"}),
+                config,
+            )
+        elif n == "autoria_spec":
+            result = app.invoke(Command(resume={"spec": spec_autoria}), config)
+        else:
+            raise AssertionError(f"nó inesperado aguardando: {n}")
+    return result or {}
+
+
+def _aprovar_ate_eval(app, config: dict) -> dict:
+    """Aprova os gates até o Eval rodar, parando quando ele reprova.
+
+    Usado para testar o caminho de reprovação do Eval (ADR-0017): aprova
+    `hitl_intake`, autoria, `hitl_feature`, `hitl_platform`, `hitl_review` e
+    `hitl_deploy`. O Eval roda dentro do invoke do `hitl_deploy`; quando
+    reprova, volta ao `hitl_deploy` e o loop para.
+    """
+    result: dict | None = None
+    for _ in range(20):
+        nxt = app.get_state(config).next
+        if not nxt:
+            break
+        n = str(nxt[0])
+        if n.startswith("hitl_"):
+            result = app.invoke(
+                Command(resume={"decisao": "aprovado", "observacao": "ok"}),
+                config,
+            )
+            if (result.get("resultado_eval") or {}).get("aprovado") is False:
+                break
+        elif n == "autoria_spec":
+            result = app.invoke(
+                Command(resume={"spec": "Spec autorada pelo FDE."}),
+                config,
+            )
+        else:
+            raise AssertionError(f"nó inesperado aguardando: {n}")
+    return result or {}
 
 
 def _levar_ate_sre(app, thread_id: str) -> dict:
@@ -201,8 +269,7 @@ def _levar_ate_sre(app, thread_id: str) -> dict:
         },
         config,
     )
-    app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
-    return app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
+    return _aprovar_todos_gates(app, config)
 
 
 def _levar_ate_monitorado(
@@ -216,26 +283,16 @@ def _levar_ate_monitorado(
     """Dirige o fluxo feliz completo até `monitorado`.
 
     Lida com os dois caminhos de ambiguidade: alta escala ao FDE (autoria da
-    spec via resume); baixa segue direto ao fan_out. Em ambos, o HITL é
-    aprovado e o fluxo percorre Eval → deploy → SRE.
+    spec via resume); baixa segue direto ao fan_out. Em ambos, cada gate HITL
+    é aprovado e o fluxo percorre Eval → deploy → SRE.
     """
     config = {"configurable": {"thread_id": thread_id}}
     payload: dict = {"origem": origem, "spec": spec}
     if origem_subtipo is not None:
         payload["origem_subtipo"] = origem_subtipo
 
-    result = app.invoke(payload, config)
-
-    if result["ambiguidade"] == "alta":
-        result = app.invoke(
-            Command(resume={"spec": "Spec autorada pelo FDE."}),
-            config,
-        )
-
-    return app.invoke(
-        Command(resume={"decisao": "aprovado", "observacao": "ok"}),
-        config,
-    )
+    app.invoke(payload, config)
+    return _aprovar_todos_gates(app, config)
 
 
 def test_fluxo_estrategia_nova_funcionalidade_ate_monitorado():
@@ -367,13 +424,14 @@ def test_architecture_acionado_quando_spec_toca_contrato_externo():
     app = build_graph().compile(checkpointer=build_dev_checkpointer())
     config = {"configurable": {"thread_id": "arch-on-1"}}
 
-    result = app.invoke(
+    app.invoke(
         {
             "origem": "cliente",
             "spec": "Adicionar endpoint externo de consulta de saldo no dashboard.",
         },
         config,
     )
+    result = _aprovar_todos_gates(app, config)
 
     assert result["toca_contrato_externo"] is True
     assert len(result["adrs"]) >= 1
@@ -383,13 +441,14 @@ def test_architecture_nao_acionado_quando_spec_rotineira():
     app = build_graph().compile(checkpointer=build_dev_checkpointer())
     config = {"configurable": {"thread_id": "arch-off-1"}}
 
-    result = app.invoke(
+    app.invoke(
         {
             "origem": "cliente",
             "spec": "Adicionar botão de download no dashboard.",
         },
         config,
     )
+    result = _aprovar_todos_gates(app, config)
 
     assert result["toca_contrato_externo"] is False
     assert result["adrs"] == []
@@ -399,13 +458,14 @@ def test_architecture_frontend_nao_toca_contrato_externo():
     app = build_graph().compile(checkpointer=build_dev_checkpointer())
     config = {"configurable": {"thread_id": "arch-front-1"}}
 
-    result = app.invoke(
+    app.invoke(
         {
             "origem": "cliente",
             "spec": "Adicionar componente de interface no dashboard.",
         },
         config,
     )
+    result = _aprovar_todos_gates(app, config)
 
     assert result["toca_contrato_externo"] is False
     assert result["adrs"] == []

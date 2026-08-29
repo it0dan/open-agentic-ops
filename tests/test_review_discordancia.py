@@ -94,6 +94,28 @@ def test_review_node_aceita_callable_injetado():
     assert result["feedback_review"][0]["motivo"] == "padrão do time violado"
 
 
+def _aprovar_ate_review(app, config: dict) -> None:
+    """Aprova os gates até o Review rodar (feedback_review presente).
+
+    O `hitl_review` pausa antes do Review rodar; aprová-lo faz o `review_node`
+    executar e produzir o `feedback_review`. Para quando o review já rodou.
+    """
+    for _ in range(20):
+        state = app.get_state(config)
+        if state.values.get("feedback_review"):
+            return
+        nxt = state.next
+        if not nxt:
+            return
+        n = str(nxt[0])
+        if n.startswith("hitl_"):
+            app.invoke(Command(resume={"decisao": "aprovado", "observacao": "ok"}), config)
+        elif n == "autoria_spec":
+            app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
+        else:
+            raise AssertionError(f"nó inesperado aguardando: {n}")
+
+
 def test_hitl_payload_carrega_review_discordancia():
     app = build_graph(revisar=_revisar_discorda).compile(checkpointer=build_dev_checkpointer())
     config = {"configurable": {"thread_id": "rev-disc-1"}}
@@ -107,10 +129,10 @@ def test_hitl_payload_carrega_review_discordancia():
         },
         config,
     )
-    app.invoke(Command(resume={"spec": "Spec autorada pelo FDE."}), config)
+    _aprovar_ate_review(app, config)
 
     state = app.get_state(config)
-    assert "hitl" in state.next
+    assert any(str(n).startswith("hitl_") for n in state.next)
     assert state.values.get("origem_discordancia") == "review"
     fb = state.values.get("feedback_review", [])
     assert any(f["discorda_classificacao"] for f in fb)
@@ -127,6 +149,7 @@ def test_hitl_payload_sem_review_discordancia():
         },
         config,
     )
+    _aprovar_ate_review(app, config)
 
     state = app.get_state(config)
     assert "origem_discordancia" not in state.values
@@ -152,7 +175,23 @@ def test_origem_discordancia_exposta_na_audit():
 
         client.post(
             "/resume",
+            json={"thread_id": thread_id, "decisao": "aprovado", "observacao": "ok"},
+        )
+        client.post(
+            "/resume",
             json={"thread_id": thread_id, "spec": "Spec autorada pelo FDE."},
+        )
+        client.post(
+            "/resume",
+            json={"thread_id": thread_id, "decisao": "aprovado", "observacao": "ok"},
+        )
+        client.post(
+            "/resume",
+            json={"thread_id": thread_id, "decisao": "aprovado", "observacao": "ok"},
+        )
+        client.post(
+            "/resume",
+            json={"thread_id": thread_id, "decisao": "aprovado", "observacao": "ok"},
         )
 
         auditoria = client.get("/auditoria").json()

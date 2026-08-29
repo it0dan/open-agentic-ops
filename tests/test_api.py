@@ -47,6 +47,30 @@ def test_board_vazio(client):
     assert r.json() == []
 
 
+def _aprovar_todos_gates_api(client, tid: str) -> dict:
+    """Aprova cada gate HITL via API até a demanda terminar (ADR-0025)."""
+    body: dict = {}
+    for _ in range(20):
+        detalhe = client.get(f"/tasks/{tid}").json()
+        etapa = detalhe.get("aguardando_etapa")
+        if etapa is None:
+            body = detalhe
+            break
+        if etapa == "intake":
+            r = client.post(
+                "/resume",
+                json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"},
+            )
+        else:
+            r = client.post(
+                "/resume",
+                json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"},
+            )
+        assert r.status_code == 200
+        body = r.json()
+    return body
+
+
 def test_intake_alta_ambiguidade_pausa_na_autoria(client):
     r = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA})
     assert r.status_code == 200
@@ -57,12 +81,14 @@ def test_intake_alta_ambiguidade_pausa_na_autoria(client):
     assert body["pii_masked"] is True
     assert "123.456.789-00" not in body["spec"]
     assert "[CPF]" in body["spec"]
-    assert body["status"] == "aguardando_autoria"
+    assert body["status"] == "triado"
+    assert body["aguardando_etapa"] == "intake"
 
 
 def test_resume_autoria_spec_libera_fluxo(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
     r = client.post(
         "/resume",
         json={"thread_id": tid, "spec": "Spec autorada pelo FDE."},
@@ -71,7 +97,11 @@ def test_resume_autoria_spec_libera_fluxo(client):
     body = r.json()
     assert body["spec"] == "Spec autorada pelo FDE."
     assert body["spec_autor"] == "fde"
-    assert len(body["worktrees"]) == 2
+    assert body["aguardando_etapa"] == "feature"
+
+    r = client.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
+    assert r.status_code == 200
+    assert len(r.json()["worktrees"]) == 2
 
 
 def test_resume_autoria_spec_exige_spec(client):
@@ -147,14 +177,9 @@ def test_board_detalhe_404(client):
 def test_resume_aprova_demanda(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
     client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
-    r = client.post(
-        "/resume",
-        json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"},
-    )
-    assert r.status_code == 200
-    body = r.json()
-    assert body["decisao_hitl"]["decisao"] == "aprovado"
+    body = _aprovar_todos_gates_api(client, tid)
     assert body["resultado_eval"]["aprovado"] is True
     assert body["status"] == "monitorado"
 
@@ -162,6 +187,7 @@ def test_resume_aprova_demanda(client):
 def test_resume_rejeita_demanda(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
     client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
     r = client.post(
         "/resume",
@@ -176,7 +202,6 @@ def test_resume_rejeita_demanda(client):
 def test_resume_aprova_com_ressalvas(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
-    client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
     r = client.post(
         "/resume",
         json={
@@ -189,14 +214,18 @@ def test_resume_aprova_com_ressalvas(client):
     body = r.json()
     assert body["decisao_hitl"]["decisao"] == "aprovado_com_ressalvas"
     assert body["decisao_hitl"]["observacao"] == "revisar cobertura de testes"
+
+    client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
+    body = _aprovar_todos_gates_api(client, tid)
     assert body["status"] == "monitorado"
 
 
 def test_resume_sem_demanda_aguardando(client):
     intake = client.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
     tid = intake["thread_id"]
+    client.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
     client.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
-    client.post("/resume", json={"thread_id": tid, "decisao": "aprovado"})
+    _aprovar_todos_gates_api(client, tid)
     r = client.post("/resume", json={"thread_id": tid, "decisao": "aprovado"})
     assert r.status_code == 400
 
@@ -264,12 +293,13 @@ def test_resume_hitl_dispara_notifier():
     with TestClient(create_app(notifier=spy, scope_provider=HeaderScopeProvider())) as c:
         intake = c.post("/intake", json={"origem": "regulatorio", "texto": CASO_ALTA}).json()
         tid = intake["thread_id"]
-        c.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
         c.post("/resume", json={"thread_id": tid, "decisao": "aprovado", "observacao": "ok"})
+        c.post("/resume", json={"thread_id": tid, "spec": "Spec autorada pelo FDE."})
+        _aprovar_todos_gates_api(c, tid)
 
-    assert len(chamadas) == 2
+    assert len(chamadas) >= 2
     hitl = [p for _, p in chamadas if "decisao" in p["decision"]]
-    assert len(hitl) == 1
+    assert len(hitl) >= 2
     payload = hitl[0]
     assert payload["status"] == "resumed"
     assert payload["decision"] == {"decisao": "aprovado", "observacao": "ok"}

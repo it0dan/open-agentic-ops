@@ -19,6 +19,7 @@ import uuid
 from collections.abc import Callable
 from typing import Any, Literal
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -45,6 +46,26 @@ from open_agentic_ops.state import (
     OrigemSubtipo,
     Prioridade,
 )
+
+load_dotenv()
+
+
+def _configurar_logging() -> None:
+    """Captura logs da API em arquivo (sem PII raw — ADR-0006).
+
+    O `_notifier_log` já sanitiza o payload via `sanitize_for_telemetry` antes
+    de logar; este handler apenas persiste os registros em `logs/api.log`.
+    """
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    handler = logging.FileHandler(os.path.join(log_dir, "api.log"), encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+
+_configurar_logging()
 
 
 class ResumeBody(BaseModel):
